@@ -6,18 +6,17 @@ const nodemailer = require('nodemailer')
 const xoauth2 = require('xoauth2')
 const sanitize = require('mongo-sanitize')
 
-// Comment out email transporter
-// const transporter = nodemailer.createTransport({
-//   service: 'gmail',
-//   auth: {
-//     type: 'OAuth2',
-//     user: process.env.AUTH_USER_EMAIL,
-//     clientId: process.env.AUTH_CLIENT_ID,
-//     clientSecret: process.env.AUTH_CLIENT_SECRET,
-//     refreshToken: process.env.AUTH_REFRESH_TOKEN,
-//     accessToken: process.env.AUTH_ACCESS_TOKEN,
-//   },
-// })
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    type: 'OAuth2',
+    user: process.env.AUTH_USER_EMAIL,
+    clientId: process.env.AUTH_CLIENT_ID,
+    clientSecret: process.env.AUTH_CLIENT_SECRET,
+    refreshToken: process.env.AUTH_REFRESH_TOKEN,
+    accessToken: process.env.AUTH_ACCESS_TOKEN,
+  },
+})
 
 //REGISTER
 router.post('/register', async (req, res) => {
@@ -33,31 +32,30 @@ router.post('/register', async (req, res) => {
       email: sanitizedEmail,
       password: hashedPass,
       displayName: sanitizedDisplayName,
-      confirmed: true // Automatically set to true
     })
 
     const user = await newUser.save()
 
-    // Comment out email verification
-    // jwt.sign(
-    //   {
-    //     userId: user._id,
-    //   },
-    //   process.env.EMAIL_SECRET,
-    //   {
-    //     expiresIn: '1d',
-    //   },
-    //   (err, emailToken) => {
-    //     const url = `http://localhost:3000/api/auth/confirmation/${emailToken}`
-    //
-    //     transporter.sendMail({
-    //       from: 'Island <ceylan.furkan100@gmail.com>',
-    //       to: user.email,
-    //       subject: 'Confirm Email',
-    //       html: `Please click this email to confirm your email: <a href="${url}">${url}</a>`,
-    //     })
-    //   }
-    // )
+    // async email
+    jwt.sign(
+      {
+        userId: user._id,
+      },
+      process.env.EMAIL_SECRET,
+      {
+        expiresIn: '1d',
+      },
+      (err, emailToken) => {
+        const url = `http://localhost:3000/api/auth/confirmation/${emailToken}`
+
+        transporter.sendMail({
+          from: 'Island <ceylan.furkan100@gmail.com>',
+          to: user.email,
+          subject: 'Confirm Email',
+          html: `Please click this email to confirm your email: <a href="${url}">${url}</a>`,
+        })
+      }
+    )
 
     return res.status(200).json(user)
   } catch (err) {
@@ -85,11 +83,11 @@ router.post('/token', async (req, res) => {
   const refreshToken = req.body.token
   if (refreshToken == null) return res.sendStatus(401)
   if (!refreshTokens.includes(refreshToken)) return res.sendStatus(403)
-  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || "default_refresh_secret_key_123456", (err) => {
+  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err) => {
     if (err) return res.sendStatus(403)
     const accessToken = jwt.sign(
       { userId: userLogin._id },
-      process.env.ACCESS_TOKEN_SECRET || "default_access_secret_key_123456",
+      process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: '1d' }
     )
     res.status(200).json({ token: accessToken })
@@ -99,67 +97,45 @@ router.post('/token', async (req, res) => {
 //LOGIN
 router.post('/login', async (req, res) => {
   try {
-    console.log("Login attempt with:", req.body.email);
-    
-    // Kiểm tra biến môi trường
-    console.log("ACCESS_TOKEN_SECRET exists:", process.env.ACCESS_TOKEN_SECRET ? "yes" : "no");
-    
     const userLogin = await User.findOne({
       email: req.body.email,
     })
 
-    if (!userLogin) {
-      console.log("User not found");
-      return res.status(404).json({ error: 'User not found' });
-    }
+    if (!userLogin) return res.status(404).json({ error: 'User not found' })
 
-    // Comment out email confirmation check
     // if (!userLogin.confirmed) return res.status(400).json({ error: 'Email not confirmed' })
-    
-    console.log("User found, checking password");
+
     const validPassword = await bcrypt.compare(
       req.body.password,
       userLogin.password
     )
-    
-    if (!validPassword) {
-      console.log("Invalid password");
-      return res.status(400).json({ error: 'Wrong password' });
-    }
+    if (!validPassword) return res.status(400).json({ error: 'Wrong password' })
 
-    // Sử dụng giá trị mặc định nếu biến môi trường không tồn tại
-    const secretKey = process.env.ACCESS_TOKEN_SECRET || "default_access_secret_key_123456";
-    const refreshSecretKey = process.env.REFRESH_TOKEN_SECRET || "default_refresh_secret_key_123456";
-    
-    console.log("Creating tokens");
-    
     const accessToken = jwt.sign(
       { userId: userLogin._id },
-      process.env.ACCESS_TOKEN_SECRET || "default_access_secret_key_123456",
+      process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: '1d' }
     )
 
     const refreshToken = jwt.sign(
       { userId: userLogin._id },
-      process.env.REFRESH_TOKEN_SECRET || "default_refresh_secret_key_123456"
+      process.env.REFRESH_TOKEN_SECRET
     )
 
     refreshTokens.push(refreshToken)
-    
-    console.log("Login successful");
+
     return res
       .status(200)
       .json({ user: userLogin, token: accessToken, refreshToken: refreshToken })
   } catch (err) {
-    console.error("Login error:", err);
-    return res.status(500).json({ error: err.message || "Internal server error" })
+    return res.status(500).json(err)
   }
 })
 
 router.get('/user', async (req, res) => {
   let token = req.headers.token
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET || "default_access_secret_key_123456", async (err, decoded) => {
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(401).json({
         message: 'unauthorized',

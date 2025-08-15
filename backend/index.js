@@ -14,16 +14,10 @@ const authRoute = require('./routes/auth')
 const postRoute = require('./routes/posts')
 
 dotenv.config()
-
-// Kiểm tra biến môi trường
-console.log("MONGO_URL exists:", process.env.MONGO_URL ? "yes" : "no");
-console.log("dotenv path:", require('path').resolve('.env'));
-
-// Sử dụng connection string hardcode tạm thời nếu biến môi trường không tồn tại
-const mongoUri = process.env.MONGO_URL || "mongodb+srv://nam_phan_2k4:nam10102004@island.d3uici2.mongodb.net/?retryWrites=true&w=majority&appName=Island";
+console.log("MONGO_URL after load:", process.env.MONGO_URL);
 
 mongoose.connect(
-  mongoUri,
+  process.env.MONGO_URL,
   {
     useNewUrlParser: true,
     useUnifiedTopology: true,
