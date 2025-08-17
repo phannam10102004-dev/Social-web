@@ -5,17 +5,15 @@ const jwt = require('jsonwebtoken')
 const nodemailer = require('nodemailer')
 const xoauth2 = require('xoauth2')
 const sanitize = require('mongo-sanitize')
+const mongoose = require('mongoose')
+require('dotenv').config()
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    type: 'OAuth2',
-    user: process.env.AUTH_USER_EMAIL,
-    clientId: process.env.AUTH_CLIENT_ID,
-    clientSecret: process.env.AUTH_CLIENT_SECRET,
-    refreshToken: process.env.AUTH_REFRESH_TOKEN,
-    accessToken: process.env.AUTH_ACCESS_TOKEN,
-  },
+    user: 'phannam10102004@gmail.com',
+    pass: process.env.EMAIL_APP_PASSWORD
+  }
 })
 
 //REGISTER
@@ -25,39 +23,62 @@ router.post('/register', async (req, res) => {
     const sanitizedPassword = sanitize(req.sanitize(req.body.password))
     const sanitizedDisplayName = sanitize(req.sanitize(req.body.displayName))
 
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: sanitizedEmail })
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' })
+    }
+
     const salt = await bcrypt.genSalt(10)
     const hashedPass = await bcrypt.hash(sanitizedPassword, salt)
 
+    // Create user object but don't save yet
     const newUser = new User({
       email: sanitizedEmail,
       password: hashedPass,
-      displayName: sanitizedDisplayName,
+      displayName: sanitizedDisplayName
     })
-
-    const user = await newUser.save()
-
-    // async email
-    jwt.sign(
+    
+    // Generate a temporary ID for the verification link
+    const tempId = new mongoose.Types.ObjectId()
+    
+    // Create email token with the user email and ID
+    const emailToken = jwt.sign(
       {
-        userId: user._id,
+        email: sanitizedEmail,
+        userId: tempId,
       },
       process.env.EMAIL_SECRET,
       {
         expiresIn: '1d',
-      },
-      (err, emailToken) => {
-        const url = `http://localhost:3000/api/auth/confirmation/${emailToken}`
-
-        transporter.sendMail({
-          from: 'Island <ceylan.furkan100@gmail.com>',
-          to: user.email,
-          subject: 'Confirm Email',
-          html: `Please click this email to confirm your email: <a href="${url}">${url}</a>`,
-        })
       }
     )
-
-    return res.status(200).json(user)
+    
+    const url = `http://localhost:3000/api/auth/confirmation/${emailToken}`
+    
+    // Try to send email first
+    try {
+      await transporter.sendMail({
+        from: 'Social Web <phannam10102004@gmail.com>',
+        to: sanitizedEmail,
+        subject: 'Xác nhận email',
+        html: `Vui lòng nhấp vào liên kết này để xác thực email của bạn: <a href="${url}">${url}</a>`,
+      })
+      
+      // Email sent successfully, now save the user
+      const user = await newUser.save()
+      return res.status(200).json({ 
+        user: user,
+        message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản của bạn.'
+      })
+      
+    } catch (emailErr) {
+      console.error('Email sending failed:', emailErr)
+      return res.status(500).json({ 
+        error: 'Không thể gửi email xác thực', 
+        details: emailErr.message 
+      })
+    }
   } catch (err) {
     return res.status(500).json(err)
   }
@@ -103,7 +124,7 @@ router.post('/login', async (req, res) => {
 
     if (!userLogin) return res.status(404).json({ error: 'User not found' })
 
-    // if (!userLogin.confirmed) return res.status(400).json({ error: 'Email not confirmed' })
+    if (!userLogin.confirmed) return res.status(400).json({ error: 'Email not confirmed' })
 
     const validPassword = await bcrypt.compare(
       req.body.password,
@@ -165,19 +186,30 @@ router.post('/logout', async (req, res) => {
 })
 
 router.get('/confirmation/:token', async (req, res) => {
-  const decoded = jwt.decode(req.params.token, process.env.EMAIL_SECRET)
-  await User.findOne({ _id: decoded.userId }).then((user) => {
+  try {
+    // Verify the token instead of just decoding it
+    const decoded = jwt.verify(req.params.token, process.env.EMAIL_SECRET)
+    
+    // Find user by email since we're using a temporary ID before user creation
+    const user = await User.findOne({ email: decoded.email })
+    
     if (!user) {
-      return res.status(401).json('Email confirmation failed')
+      return res.status(401).json('Email confirmation failed: User not found')
     }
 
+    // Update user confirmation status
     user.confirmed = true
-    user.save().then((user) => {
-      return res.send(user)
-    })
-
+    await user.save()
+    
+    // Redirect to login page
     return res.redirect('http://localhost:8080/login')
-  })
+  } catch (err) {
+    console.error('Token verification failed:', err)
+    return res.status(400).json({
+      error: 'Email confirmation failed: Invalid or expired token',
+      details: err.message
+    })
+  }
 })
 
 module.exports = router
