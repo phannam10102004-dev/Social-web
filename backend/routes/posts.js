@@ -7,23 +7,19 @@ const sanitize = require('mongo-sanitize')
 
 //CREATE POST
 router.post('/', async (req, res) => {
-  const sanitizedDesc = sanitize(req.sanitize(req.body.description))
-  const sanitizedisText = sanitize(req.sanitize(req.body.isTextPost))
-  const sanitizedisImage = sanitize(req.sanitize(req.body.isImagePost))
-  const sanitizedUserId = sanitize(req.sanitize(req.body.userId))
-  const sanitizedFile = sanitize(req.sanitize(req.body.file))
-
-  const newPost = await new Post({
-    description: sanitizedDesc,
-    isTextPost: sanitizedisText,
-    isImagePost: sanitizedisImage,
-    userId: sanitizedUserId,
-    file: sanitizedFile,
-  })
-
   try {
+    const sanitizedDesc = sanitize(req.sanitize(req.body.description))
+    const sanitizedUserId = sanitize(req.sanitize(req.body.userId))
+    const sanitizedFile = sanitize(req.sanitize(req.body.file))
+
+    const newPost = new Post({
+      description: sanitizedDesc,
+      userId: sanitizedUserId,
+      file: sanitizedFile
+    })
+
     const createPost = await newPost.save()
-    return res.status(200).json({ createPost })
+    return res.status(200).json(createPost)
   } catch (err) {
     return res.status(500).json(err)
   }
@@ -31,15 +27,25 @@ router.post('/', async (req, res) => {
 
 //UPLOAD
 router.post('/upload', (req, res) => {
-  const file = req.files.file
-  file.mv('uploads/' + file.name, function (err) {
+  if (!req.files || !req.files.file) {
+    return res.status(400).json({ error: "Không tìm thấy file" });
+  }
+  
+  const file = req.files.file;
+  
+  // Tạo tên file an toàn (tránh trùng lặp)
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  const filename = uniqueSuffix + '-' + file.name;
+  
+  file.mv('uploads/' + filename, function (err) {
     if (err) {
-      console.log(err)
+      console.log(err);
+      return res.status(500).json({ error: "Lỗi khi upload file" });
     } else {
-      console.log('uploaded')
+      console.log('uploaded');
+      return res.json({ file: filename });
     }
-  })
-  return res.json({ file: req.body.file })
+  });
 })
 
 //COMMENT POST

@@ -23,14 +23,6 @@ const PostSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
-    isTextPost: {
-      type: Boolean,
-      default: false,
-    },
-    isImagePost: {
-      type: Boolean,
-      default: false,
-    },
   },
   { timestamps: true }
 )
