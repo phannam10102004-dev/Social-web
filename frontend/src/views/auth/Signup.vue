@@ -1,10 +1,12 @@
 <template>
   <article class="signup">
     <div class="card card--accent">
-      <img class="card__logo" src="../../assets/logo.png" />
-      <h2 class="card__text">
-        Sign Up to Island Social Platform
-      </h2>
+      <div class="logo-row">
+        <img class="card__logo" src="../../assets/logo.png" />
+        <span class="joynet-logo-text">Joynet</span>
+      </div>
+
+      <h2 class="card__text">Đăng ký để tiếp tục</h2>
       <label class="input">
         <input
           class="input__field"
@@ -15,14 +17,23 @@
         />
         <span class="input__label">E-mail</span>
       </label>
-      <label class="input">
+      <label class="input" style="position: relative">
         <input
           class="input__field"
-          type="password"
+          :type="showPassword ? 'text' : 'password'"
           placeholder=" "
           v-model="password"
         />
-        <span class="input__label">Password</span>
+        <span class="input__label">Mật khẩu</span>
+        <button
+          type="button"
+          class="toggle-password-btn"
+          @click="showPassword = !showPassword"
+          :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+        >
+          <span v-if="showPassword">🙈</span>
+          <span v-else>👁️</span>
+        </button>
       </label>
       <label class="input">
         <input
@@ -31,18 +42,16 @@
           placeholder=" "
           v-model="displayName"
         />
-        <span class="input__label">Display Name</span>
+        <span class="input__label">Tên hiển thị</span>
       </label>
-      <p class="warn" v-if="fillError">
-        Please fill in all fields
-      </p>
-      <p class="warn" v-if="!emailError">
-        Please enter a valid email address
+      <p class="warn" v-if="fillError">Vui lòng điền vào tất cả các trường</p>
+      <p class="warn" v-if="email && !emailError">
+        Vui lòng nhập địa chỉ email hợp lệ
       </p>
       <div class="button-group">
         <div class="button-group-left">
           <div class="signup-button-loader" v-if="!signupLoading">
-            <button @click="signUp">Sign Up</button>
+            <button @click="signUp">Đăng ký</button>
           </div>
           <div class="signup-button-loader" v-else>
             <SyncLoader class="signup-loader" :color="color" />
@@ -50,8 +59,8 @@
         </div>
         <div class="button-group-right">
           <router-link to="/login" v-if="!signupLoading">
-            <button>Already Signed Up?</button></router-link
-          >
+            <button>Đăng nhập</button>
+          </router-link>
         </div>
       </div>
     </div>
@@ -59,54 +68,56 @@
 </template>
 
 <script>
-import axios from 'axios'
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
+import axios from "axios";
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
-  name: 'Signup',
+  name: "Signup",
   components: { SyncLoader },
   data() {
     return {
-      email: '',
-      password: '',
-      displayName: '',
+      email: "",
+      password: "",
+      displayName: "",
       fillError: false,
       emailError: false,
       signupLoading: false,
-      color: 'pink',
-    }
+      showPassword: false,
+
+      color: "pink",
+    };
   },
   methods: {
     validateEmail() {
       if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email)) {
-        this.emailError = true
+        this.emailError = true;
       } else {
-        this.emailError = false
+        this.emailError = false;
       }
     },
     async signUp() {
-      this.signupLoading = true
+      this.signupLoading = true;
       if (!this.email || !this.password || !this.displayName) {
-        this.fillError = true
-        this.signupLoading = false
+        this.fillError = true;
+        this.signupLoading = false;
       } else {
-        this.fillError = false
+        this.fillError = false;
 
-        const response = await axios.post('auth/register', {
+        const response = await axios.post("auth/register", {
           email: this.email,
           password: this.password,
           displayName: this.displayName,
-        })
+        });
         try {
-          await this.$router.push('/login')
+          await this.$router.push("/login");
         } catch (err) {
-          console.log(err)
+          console.log(err);
         }
-        this.signupLoading = false
+        this.signupLoading = false;
       }
     },
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -131,7 +142,8 @@ export default {
   }
 
   &__logo {
-    width: 150px;
+    width: 60px;
+    height: 60px;
     margin-bottom: 1rem;
   }
 
@@ -146,7 +158,7 @@ export default {
 
 .signup {
   max-width: 40rem;
-  padding: 1rem;
+  padding: 3rem;
   margin-left: auto;
   margin-right: auto;
 }
@@ -183,11 +195,27 @@ export default {
       & + .input__label {
         transform: translate(0.25rem, -65%) scale(0.8);
         color: var(--pink);
+        background: var(--white);
+        padding: 0 0.3em;
+        z-index: 2;
       }
     }
   }
 }
-
+// Nút hiện/ẩn mật khẩu
+.toggle-password-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 0.25em;
+  color: var(--txt-darkest);
+  z-index: 3;
+}
 .button-group {
   margin-top: calc(var(--size-bezel) * 2.5);
   display: flex;
@@ -201,6 +229,8 @@ button {
   border: none;
   border-radius: var(--size-radius);
   font-weight: 900;
+  font-family: "Roboto", "Arial", "Helvetica Neue", "Segoe UI", "Tahoma",
+    "Geneva", "Verdana", "sans-serif";
 }
 
 button + button {
@@ -220,5 +250,23 @@ button + button {
 
 .warn {
   color: var(--red);
+}
+// Logo và chữ Joynet trên một dòng, căn giữa đẹp
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.joynet-logo-text {
+  font-family: "Montserrat", "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
+  font-weight: 900;
+  font-size: 2rem;
+  background: linear-gradient(90deg, #fe7b77 0%, #fea94f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 2px 2px 8px rgba(254, 123, 119, 0.1),
+    0 2px 8px rgba(254, 169, 79, 0.1);
+  display: inline-block;
 }
 </style>

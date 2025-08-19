@@ -1,10 +1,11 @@
 <template>
   <article class="login">
     <div class="card card--accent">
-      <img class="card__logo" src="../../assets/logo.png" />
-      <h2 class="card__text">
-        Log In to Island Social Platform
-      </h2>
+      <div class="logo-row">
+        <img class="card__logo" src="../../assets/logo.png" />
+        <span class="joynet-logo-text">Joynet</span>
+      </div>
+      <h2 class="card__text">Đăng nhập để tiếp tục</h2>
       <label class="input">
         <input
           class="input__field"
@@ -14,87 +15,95 @@
         />
         <span class="input__label">E-mail</span>
       </label>
-      <label class="input">
+      <label class="input" style="position: relative">
         <input
           class="input__field"
-          type="password"
+          :type="showPassword ? 'text' : 'password'"
           placeholder=" "
           v-model="password"
         />
-        <span class="input__label">Password</span>
+        <span class="input__label">Mật khẩu</span>
+        <button
+          type="button"
+          class="toggle-password-btn"
+          @click="showPassword = !showPassword"
+          :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+        >
+          <span v-if="showPassword">🙈</span>
+          <span v-else>👁️</span>
+        </button>
       </label>
       <div class="button-group">
         <div class="button-group-left">
           <div class="login-button-loader" v-if="!loginLoading">
-            <button @click="login">Login</button>
+            <button @click="login">Đăng nhập</button>
           </div>
           <div class="login-button-loader" v-else>
             <SyncLoader class="login-loader" :color="color" />
           </div>
-          <button type="reset" v-if="!loginLoading">Forgot Password?</button>
+          <button type="reset" v-if="!loginLoading">Quên mật khẩu?</button>
         </div>
         <div class="button-group-right" v-if="!loginLoading">
-          <router-link to="/signup"> <button>Sign Up</button></router-link>
+          <router-link to="/signup"> <button>Đăng ký</button></router-link>
         </div>
       </div>
       <p class="warn" v-if="error">
         {{ error }}
       </p>
-      <p class="warn" v-if="fillError">
-        Please fill in all fields
-      </p>
+      <p class="warn" v-if="fillError">Vui lòng điền vào tất cả các trường</p>
     </div>
   </article>
 </template>
 
 <script>
-import axios from 'axios'
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
+import axios from "axios";
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
-  name: 'Login',
+  name: "Login",
   components: { SyncLoader },
   data() {
     return {
-      email: '',
-      password: '',
-      error: '',
-      color: 'pink',
+      email: "",
+      password: "",
+      error: "",
+      color: "pink",
       loginLoading: false,
       fillError: false,
-    }
+      showPassword: false,
+    };
   },
   methods: {
     async login() {
-      this.loginLoading = true
+      this.loginLoading = true;
 
       if (!this.email || !this.password) {
-        this.fillError = true
-        this.loginLoading = false
+        this.fillError = true;
+        this.loginLoading = false;
       } else {
-        this.fillError = false
+        this.fillError = false;
         const data = {
           email: this.email,
           password: this.password,
-        }
-        await axios.post('auth/login', data).then(
+        };
+        await axios.post("auth/login", data).then(
           (res) => {
             if (res.status === 200) {
-              this.error = false
-              localStorage.setItem('token', res.data.token)
-              this.$router.push('/')
+              this.error = false;
+              localStorage.setItem("token", res.data.token);
+              this.$router.push("/");
             }
           },
           (err) => {
-            this.error = err.response.data.error
-            this.password = ''
+            this.error = err.response.data.error;
+            this.password = "";
           }
-        )
-        this.loginLoading = false
+        );
+        this.loginLoading = false;
       }
     },
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -119,7 +128,8 @@ export default {
   }
 
   &__logo {
-    width: 150px;
+    width: 60px;
+    height: 60px;
     margin-bottom: 1rem;
   }
 
@@ -171,11 +181,27 @@ export default {
       & + .input__label {
         transform: translate(0.25rem, -65%) scale(0.8);
         color: var(--pink);
+        background: var(--white);
+        padding: 0 0.3em;
+        z-index: 2;
       }
     }
   }
 }
 
+.toggle-password-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 0.25em;
+  color: var(--txt-darkest);
+  z-index: 3;
+}
 .button-group {
   margin-top: calc(var(--size-bezel) * 2.5);
   display: flex;
@@ -189,6 +215,8 @@ button {
   border: none;
   border-radius: var(--size-radius);
   font-weight: 900;
+  font-family: "Roboto", "Arial", "Helvetica Neue", "Segoe UI", "Tahoma",
+    "Geneva", "Verdana", "sans-serif";
 }
 
 button + button {
@@ -217,5 +245,23 @@ button + button {
 
 .login-button-loader {
   margin-right: 2em;
+}
+// Logo và chữ Joynet trên một dòng, căn giữa đẹp
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.joynet-logo-text {
+  font-family: "Montserrat", "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
+  font-weight: 900;
+  font-size: 2rem;
+  background: linear-gradient(90deg, #fe7b77 0%, #fea94f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 2px 2px 8px rgba(254, 123, 119, 0.1),
+    0 2px 8px rgba(254, 169, 79, 0.1);
+  display: inline-block;
 }
 </style>
