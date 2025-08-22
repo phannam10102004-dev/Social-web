@@ -10,10 +10,12 @@
       <label class="input">
         <input
           class="input__field"
-          type="email"
+          type="text"
           placeholder=" "
           v-model="email"
-          @blur="validateEmail"
+          :class="{
+            'input-error': (fillError && !email) || showEmailError,
+          }"
         />
         <span class="input__label">E-mail</span>
       </label>
@@ -23,6 +25,7 @@
           :type="showPassword ? 'text' : 'password'"
           placeholder=" "
           v-model="password"
+          :class="{ 'input-error': fillError && !password }"
         />
         <span class="input__label">Mật khẩu</span>
         <button
@@ -41,13 +44,16 @@
           type="text"
           placeholder=" "
           v-model="displayName"
+          :class="{ 'input-error': fillError && !displayName }"
         />
         <span class="input__label">Tên hiển thị</span>
       </label>
-      <p class="warn" v-if="fillError">Vui lòng điền vào tất cả các trường</p>
-      <p class="warn" v-if="email && !emailError">
+      <p class="warn" v-if="fillError">Vui lòng điền đủ thông tin</p>
+      <p class="warn" v-if="email && !emailError && showEmailError">
         Vui lòng nhập địa chỉ email hợp lệ
       </p>
+      <p style="color: red" v-if="signupError">{{ signupError }}</p>
+      <pre>{{ signupError }}</pre>
       <div class="button-group">
         <div class="button-group-left">
           <div class="signup-button-loader" v-if="!signupLoading">
@@ -59,10 +65,26 @@
         </div>
         <div class="button-group-right">
           <router-link to="/login" v-if="!signupLoading">
-            <button>Đăng nhập</button>
+            <button>Bạn đã có tài khoản?</button>
           </router-link>
         </div>
       </div>
+
+      <!-- Google Signup Divider -->
+      <div class="divider-row">
+        <span class="divider-line"></span>
+        <span class="divider-text">hoặc</span>
+        <span class="divider-line"></span>
+      </div>
+      <!-- Google Signup Button -->
+      <button class="google-login-btn" @click="signUpWithGoogle">
+        <img
+          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+          alt="Google logo"
+          class="google-logo"
+        />
+        Đăng ký bằng Google
+      </button>
     </div>
   </article>
 </template>
@@ -81,40 +103,75 @@ export default {
       displayName: "",
       fillError: false,
       emailError: false,
+      showEmailError: false,
       signupLoading: false,
       showPassword: false,
+      signupError: "",
 
       color: "pink",
     };
   },
+  watch: {
+    email() {
+      this.showEmailError = false;
+    },
+  },
   methods: {
+    signUpWithGoogle() {
+      // TODO: Thêm logic đăng ký bằng Google ở đây
+      alert("Chức năng đăng ký bằng Google sẽ được cập nhật!");
+    },
     validateEmail() {
-      if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email)) {
-        this.emailError = true;
-      } else {
-        this.emailError = false;
-      }
+      // Trả về true nếu email hợp lệ, false nếu không hợp lệ
+      return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email);
     },
     async signUp() {
       this.signupLoading = true;
+      this.showEmailError = false;
+      this.signupError = "";
+
+      // Validate input rỗng
       if (!this.email || !this.password || !this.displayName) {
         this.fillError = true;
         this.signupLoading = false;
-      } else {
-        this.fillError = false;
+        return;
+      }
+      this.fillError = false;
 
-        const response = await axios.post("auth/register", {
+      // Validate email
+      if (!this.validateEmail()) {
+        this.emailError = false;
+        this.showEmailError = true;
+        this.signupLoading = false;
+        return;
+      } else {
+        this.emailError = true;
+        this.showEmailError = false;
+      }
+
+      try {
+        const res = await axios.post("auth/register", {
           email: this.email,
           password: this.password,
           displayName: this.displayName,
         });
-        try {
+
+        // Nếu đăng ký thành công
+        if (res && res.status === 200) {
           await this.$router.push("/login");
-        } catch (err) {
-          console.log(err);
         }
+      } catch (err) {
+        console.log("Axios error"); // Debug log
+
+        if (err.response && err.response.data && err.response.data.error) {
+          this.signupError = err.response.data.error; // Backend trả về
+        } else {
+          this.signupError = "Đăng ký thất bại. Vui lòng thử lại.";
+        }
+      } finally {
         this.signupLoading = false;
       }
+      debugger;
     },
   },
 };
@@ -176,8 +233,8 @@ export default {
     transform: translate(0, 0);
     transform-origin: 0 0;
     transition: transform 120ms ease-in;
-    font-weight: bold;
     line-height: 1.2;
+    color: gray;
   }
   &__field {
     box-sizing: border-box;
@@ -268,5 +325,50 @@ button + button {
   text-shadow: 2px 2px 8px rgba(254, 123, 119, 0.1),
     0 2px 8px rgba(254, 169, 79, 0.1);
   display: inline-block;
+}
+// Hiệu ứng border đỏ khi input lỗi
+.input-error {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 2px rgba(254, 123, 119, 0.15);
+}
+/* Google Signup Styles */
+.divider-row {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0 1rem 0;
+}
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+.divider-text {
+  margin: 0 1rem;
+  color: #888;
+  font-size: 0.95rem;
+}
+.google-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.7rem 0;
+  background: #fff;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #444;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  margin-bottom: 1.2rem;
+}
+.google-login-btn:hover {
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.15);
+}
+.google-logo {
+  width: 22px;
+  height: 22px;
 }
 </style>

@@ -12,15 +12,20 @@
           type="text"
           placeholder=" "
           v-model="email"
+          :class="{
+            'input-error': (fillError && !email) || showEmailError,
+          }"
         />
         <span class="input__label">E-mail</span>
       </label>
+
       <label class="input" style="position: relative">
         <input
           class="input__field"
           :type="showPassword ? 'text' : 'password'"
           placeholder=" "
           v-model="password"
+          :class="{ 'input-error': fillError && !password }"
         />
         <span class="input__label">Mật khẩu</span>
         <button
@@ -33,6 +38,10 @@
           <span v-else>👁️</span>
         </button>
       </label>
+      <p class="warn" v-if="fillError">Vui lòng điền đủ thông tin</p>
+      <p class="warn" v-if="email && !emailError && showEmailError">
+        Vui lòng nhập địa chỉ email hợp lệ
+      </p>
       <div class="button-group">
         <div class="button-group-left">
           <div class="login-button-loader" v-if="!loginLoading">
@@ -44,13 +53,29 @@
           <button type="reset" v-if="!loginLoading">Quên mật khẩu?</button>
         </div>
         <div class="button-group-right" v-if="!loginLoading">
-          <router-link to="/signup"> <button>Đăng ký</button></router-link>
+          <router-link to="/signup">
+            <button>Bạn chưa có tài khoản?</button></router-link
+          >
         </div>
       </div>
+      <!-- Google Login Divider -->
+      <div class="divider-row">
+        <span class="divider-line"></span>
+        <span class="divider-text">hoặc</span>
+        <span class="divider-line"></span>
+      </div>
+      <!-- Google Login Button -->
+      <button class="google-login-btn" @click="loginWithGoogle">
+        <img
+          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+          alt="Google logo"
+          class="google-logo"
+        />
+        Đăng nhập bằng Google
+      </button>
       <p class="warn" v-if="error">
         {{ error }}
       </p>
-      <p class="warn" v-if="fillError">Vui lòng điền vào tất cả các trường</p>
     </div>
   </article>
 </template>
@@ -71,36 +96,64 @@ export default {
       loginLoading: false,
       fillError: false,
       showPassword: false,
+      emailError: false,
+      showEmailError: false,
     };
   },
+  watch: {
+    email() {
+      this.showEmailError = false;
+    },
+  },
   methods: {
+    loginWithGoogle() {
+      // TODO: Thêm logic đăng nhập Google ở đây
+      alert("Chức năng đăng nhập bằng Google sẽ được cập nhật!");
+    },
+    validateEmail() {
+      // Trả về true nếu email hợp lệ, false nếu không hợp lệ
+      return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email);
+    },
     async login() {
       this.loginLoading = true;
+      this.showEmailError = false;
 
       if (!this.email || !this.password) {
         this.fillError = true;
         this.loginLoading = false;
-      } else {
-        this.fillError = false;
-        const data = {
-          email: this.email,
-          password: this.password,
-        };
-        await axios.post("auth/login", data).then(
-          (res) => {
-            if (res.status === 200) {
-              this.error = false;
-              localStorage.setItem("token", res.data.token);
-              this.$router.push("/");
-            }
-          },
-          (err) => {
-            this.error = err.response.data.error;
-            this.password = "";
-          }
-        );
-        this.loginLoading = false;
+        return;
       }
+      this.fillError = false;
+
+      // Kiểm tra email hợp lệ khi bấm nút đăng nhập
+      if (!this.validateEmail()) {
+        this.emailError = false;
+        this.showEmailError = true;
+        this.loginLoading = false;
+        return;
+      } else {
+        this.emailError = true;
+        this.showEmailError = false;
+      }
+
+      const data = {
+        email: this.email,
+        password: this.password,
+      };
+      await axios.post("auth/login", data).then(
+        (res) => {
+          if (res.status === 200) {
+            this.error = false;
+            localStorage.setItem("token", res.data.token);
+            this.$router.push("/home");
+          }
+        },
+        (err) => {
+          this.error = err.response.data.error;
+          this.password = "";
+        }
+      );
+      this.loginLoading = false;
     },
   },
 };
@@ -162,7 +215,7 @@ export default {
     transform: translate(0, 0);
     transform-origin: 0 0;
     transition: transform 120ms ease-in;
-    font-weight: bold;
+    color: gray;
     line-height: 1.2;
   }
   &__field {
@@ -263,5 +316,50 @@ button + button {
   text-shadow: 2px 2px 8px rgba(254, 123, 119, 0.1),
     0 2px 8px rgba(254, 169, 79, 0.1);
   display: inline-block;
+}
+// Hiệu ứng border đỏ khi input lỗi
+.input-error {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 2px rgba(254, 123, 119, 0.15);
+}
+/* Google Login Styles */
+.divider-row {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0 1rem 0;
+}
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+.divider-text {
+  margin: 0 1rem;
+  color: #888;
+  font-size: 0.95rem;
+}
+.google-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.7rem 0;
+  background: #fff;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #444;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  margin-bottom: 1.2rem;
+}
+.google-login-btn:hover {
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.15);
+}
+.google-logo {
+  width: 22px;
+  height: 22px;
 }
 </style>

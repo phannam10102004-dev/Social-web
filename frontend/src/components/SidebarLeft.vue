@@ -18,6 +18,7 @@
           <span class="nav-icon">Profile</span>
         </div>
         <router-link
+          v-if="currentUser"
           :to="{
             name: 'Profile',
             params: {
@@ -32,6 +33,12 @@
             <span class="nav-icon">Profile</span>
           </div>
         </router-link>
+        <div v-else class="not-on-page">
+          <span class="material-icons w3-xxlarge nav-icon-not"
+            >account_circle</span
+          >
+          <span class="nav-icon">Profile</span>
+        </div>
         <router-link
           :to="{
             name: 'Profile',
@@ -73,9 +80,9 @@
 
 <script>
 export default {
-  name: 'SidebarLeft',
-  props: ['currentUser'],
-}
+  name: "SidebarLeft",
+  props: ["currentUser"],
+};
 </script>
 
 <style scoped>

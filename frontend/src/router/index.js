@@ -3,78 +3,82 @@ import {
   createWebHistory,
   RouteRecordRaw,
   createWebHashHistory,
-} from 'vue-router'
-import Home from '../views/Home.vue'
-import Login from '../views/auth/Login.vue'
-import Signup from '../views/auth/Signup.vue'
-import PostDetail from '../views/PostDetail.vue'
-import Profile from '../views/Profile.vue'
-import axios from 'axios'
-import store from '../store/index.js'
+} from "vue-router";
+import Home from "../views/Home.vue";
+import Login from "../views/auth/Login.vue";
+import Signup from "../views/auth/Signup.vue";
+import PostDetail from "../views/PostDetail.vue";
+import Profile from "../views/Profile.vue";
+import axios from "axios";
+import store from "../store/index.js";
 
 const requireAuth = (to, from, next) => {
   if (to.matched.some((record) => record.meta.requiresAuth)) {
-    let user = localStorage.getItem('token')
+    let user = localStorage.getItem("token");
     if (!user) {
       next({
-        name: 'Login',
+        name: "Login",
         query: { redirect: to.fullPath },
-      })
+      });
     } else {
-      next()
+      next();
     }
   } else {
-    next()
+    next();
   }
-}
+};
 
 const routes = [
   {
-    path: '/',
-    name: 'Home',
+    path: "/",
+    redirect: "/login",
+  },
+  {
+    path: "/home",
+    name: "Home",
     component: Home,
     beforeEnter: requireAuth,
   },
   {
-    path: '/login',
-    name: 'Login',
+    path: "/login",
+    name: "Login",
     component: Login,
   },
   {
-    path: '/signup',
-    name: 'Signup',
+    path: "/signup",
+    name: "Signup",
     component: Signup,
   },
   {
-    path: '/profile/:id',
-    name: 'Profile',
+    path: "/profile/:id",
+    name: "Profile",
     component: Profile,
     props: true,
     beforeEnter: requireAuth,
   },
   {
-    path: '/post-detail/:id',
-    name: 'PostDetail',
+    path: "/post-detail/:id",
+    name: "PostDetail",
     component: PostDetail,
     props: true,
     beforeEnter: requireAuth,
   },
-]
+];
 
-let isRefreshing = false
-let subscribers = []
+let isRefreshing = false;
+let subscribers = [];
 
 axios.interceptors.response.use(
   (response) => {
-    return response
+    return response;
   },
   (err) => {
-    const originalConfig = err.config
+    const originalConfig = err.config;
     const {
       config,
       response: { status, data },
-    } = err
-    const originalRequest = config
+    } = err;
+    const originalRequest = config;
 
     // if (data.message === 'unauthorized' && !originalConfig._retry) {
     //   originalConfig._retry = true
@@ -88,8 +92,8 @@ axios.interceptors.response.use(
     //   return Promise.reject(false)
     // }
 
-    if (status == 401 && data.message == 'unauthorized') {
-      router.push({ name: 'Login' })
+    if (status == 401 && data.message == "unauthorized") {
+      router.push({ name: "Login" });
       // if (!isRefreshing) {
       //   isRefreshing = true
       //   store
@@ -116,21 +120,21 @@ axios.interceptors.response.use(
       // return requestSubscribers
     }
   }
-)
+);
 
 function subscribeTokenRefresh(cb) {
-  subscribers.push(cb)
+  subscribers.push(cb);
 }
 
 function onRefreshed() {
-  subscribers.map((cb) => cb())
+  subscribers.map((cb) => cb());
 }
 
-subscribers = []
+subscribers = [];
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
-})
+});
 
-export default router
+export default router;
