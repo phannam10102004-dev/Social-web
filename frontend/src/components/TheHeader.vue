@@ -3,35 +3,29 @@
     <div class="header">
       <div class="header__left">
         <img class="header__logo" src="../assets/logo.png" />
-        <i class="material-icons">home</i>
+        <p>Joynet</p>
       </div>
       <div class="header__main">
-        <h2 class="header__main-text">{{ $route.name }}</h2>
         <div class="header__main-right">
           <div class="header__main-right-search">
-            <input type="text" placeholder="Search" />
+            <input type="text" placeholder="Tìm kiếm" />
             <i class="material-icons">search</i>
           </div>
+
           <button
             @click="
-              ;(openAddTextPost = !openAddTextPost), (openAddImagePost = false)
-            "
-            class="btn btn-textadd"
-          >
-            Add a Text Post
-          </button>
-          <button
-            @click="
-              ;(openAddImagePost = !openAddImagePost), (openAddTextPost = false)
+              (openAddImagePost = !openAddImagePost), (openAddTextPost = false)
             "
             class="btn btn-imageadd"
           >
-            Add an Image Post
+            Đăng bài viết
           </button>
         </div>
       </div>
       <div class="header__user">
-        <label class="header__user-username">{{ user.displayName }}</label>
+        <!--<label class="header__user-username"
+          >Xin chào, {{ user.displayName }}</label
+        >-->
         <img
           v-if="user.profilePicture"
           class="image-post__img"
@@ -42,54 +36,50 @@
           class="image-post__img"
           src="../assets/defaultProfile.png"
         />
-        <button @click="logout" class="btn btn-logout">
-          Logout
-        </button>
+        <button @click="logout" class="btn btn-logout">Đăng xuất</button>
       </div>
     </div>
-    <AddTextPost v-if="openAddTextPost" :id="currentUser" />
+
     <AddImagePost v-if="openAddImagePost" :id="currentUser" />
   </header>
 </template>
 
 <script>
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
-import AddTextPost from '@/components/AddTextPost'
-import AddImagePost from '@/components/AddImagePost'
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
+import AddImagePost from "@/components/AddImagePost";
 
 export default {
-  name: 'TheHeader',
+  name: "TheHeader",
   components: {
     SyncLoader,
-    AddTextPost,
     AddImagePost,
   },
-  props: ['currentUser'],
+  props: ["currentUser"],
   data() {
     return {
       posts: [],
       openAddImagePost: false,
       openAddTextPost: false,
-      username: '',
-      profilePicture: '',
-      id: '',
-    }
+      username: "",
+      profilePicture: "",
+      id: "",
+    };
   },
   computed: {
     user() {
-      return this.$store.state.user
+      return this.$store.state.user;
     },
   },
   methods: {
     logout() {
-      localStorage.clear()
-      this.$router.push('/login')
+      localStorage.clear();
+      this.$router.push("/login");
     },
   },
   async mounted() {
-    this.$store.dispatch('fetchUser')
+    this.$store.dispatch("fetchUser");
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -108,12 +98,25 @@ export default {
 .header__left {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 15%;
+  gap: 0.5rem; /* Thêm khoảng cách 0.5rem giữa các phần tử */
+  min-width: 160px; /* Đặt chiều rộng tối thiểu thay vì % */
 }
 
 .header__logo {
-  width: 120px;
+  width: 50px; /* Giảm kích thước logo xuống một chút */
+  height: 50px;
+  object-fit: contain;
+}
+
+.header__left p {
+  font-family: "Montserrat", "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
+  font-weight: 900;
+  font-size: 1.5rem;
+  background: linear-gradient(90deg, #fe7b77 0%, #fea94f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
 }
 
 .header__left i {
@@ -129,17 +132,12 @@ export default {
   justify-content: space-between;
 }
 
-.header__main-text {
-  font-size: 1.3rem;
-  font-weight: 700;
-  margin-left: 2.3rem;
-}
-
 .header__main-right {
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  margin-top: 0.7rem;
 }
 
 .header__main-right-search {
@@ -148,6 +146,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 10px;
+  margin-left: 2.3rem;
 }
 
 .header__main-right input {
@@ -165,7 +165,6 @@ export default {
   width: 120px;
   font-weight: 600;
   font-size: 0.75em;
-  margin-top: 0.7rem;
 }
 
 .header__user {
@@ -191,23 +190,11 @@ export default {
   margin-left: 1rem;
 }
 
-.btn-textadd {
-  transform: translate(0, 3px);
-  transition: 0.4s;
-  background-color: var(--orange);
-}
-
-.btn-textadd:hover {
-  background-color: #eba12a;
-  transition: 0.4s;
-  box-shadow: 0px 15px 15px -5px rgba(0, 0, 0, 0.2);
-  transform: translate(0, -3px);
-}
-
 .btn-imageadd {
   transform: translate(0, 3px);
   transition: 0.4s;
   background-color: var(--purple);
+  margin-top: 0.7rem;
 }
 
 .btn-imageadd:hover {
@@ -221,6 +208,9 @@ export default {
   transform: translate(0, 3px);
   transition: 0.4s;
   background-color: var(--red);
+  min-width: 100px;
+  min-height: 30px;
+  margin-top: 0.7rem;
 }
 
 .btn-logout:hover {

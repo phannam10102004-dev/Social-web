@@ -1,5 +1,6 @@
 <template>
   <div class="timeline">
+    <!-- Các khối Skeletor để hiển thị hiệu ứng loading -->
     <Skeletor circle size="50" class="skeletor" v-if="isLoading" />
     <Skeletor v-if="isLoading" class="skeletor" width="100%" height="20" />
     <Skeletor v-if="isLoading" class="skeletor" width="100%" height="300" />
@@ -9,33 +10,53 @@
     <Skeletor circle size="50" class="skeletor" v-if="isLoading" />
     <Skeletor v-if="isLoading" class="skeletor" width="100%" height="20" />
     <Skeletor v-if="isLoading" class="skeletor" width="100%" height="300" />
+    <!-- Sau khi load xong sẽ hiển thị danh sách bài post -->
     <div class="timeline__post" v-for="post in posts" :key="post._id" v-else>
       <router-link
         :to="{
           name: 'PostDetail',
-          params: {
-            id: post._id,
-          },
+          params: { id: post._id },
         }"
       >
         <div class="post">
+          <!-- ảnh đại diện user -->
           <div class="user-post-img">
             <ProfileImage :id="post.userId" class="post__img" />
           </div>
+
+          <!-- Nếu là bài post text -->
           <div class="post__user-post" v-if="post.isTextPost">
             <PostDisplayName :id="post.userId" />
             <div class="user-post-desc">
-              <p class="post__content">
-                {{ post.description }}
+              <p class="post__content" :class="{ 'post__content--truncated': isPostTruncated(post.description) }">
+                {{ getTruncatedText(post.description) }}
               </p>
+              <router-link 
+                v-if="isPostTruncated(post.description)"
+                :to="{ name: 'PostDetail', params: { id: post._id } }"
+                class="read-more-link"
+                @click.stop
+              >
+                Xem thêm
+              </router-link>
             </div>
           </div>
+
+          <!-- Nếu là bài post có ảnh -->
           <div class="image-post__user-post" v-else>
             <PostDisplayName :id="post.userId" />
             <div class="user-post-desc img-desc">
-              <p class="post__content">
-                {{ post.description }}
+              <p class="post__content" :class="{ 'post__content--truncated': isPostTruncated(post.description) }">
+                {{ getTruncatedText(post.description) }}
               </p>
+              <router-link 
+                v-if="isPostTruncated(post.description)"
+                :to="{ name: 'PostDetail', params: { id: post._id } }"
+                class="read-more-link"
+                @click.stop
+              >
+                Xem thêm
+              </router-link>
             </div>
             <div class="user-post-image">
               <img
@@ -52,34 +73,53 @@
 </template>
 
 <script>
-import axios from 'axios'
-import ProfileImage from '@/components/ProfileImage'
-import PostDisplayName from '@/components/PostDisplayName'
-import { Skeletor } from 'vue-skeletor'
+import ProfileImage from "@/components/ProfileImage";
+import PostDisplayName from "@/components/PostDisplayName";
+import { Skeletor } from "vue-skeletor";
 export default {
-  name: 'Timeline',
+  name: "Timeline",
   components: { ProfileImage, Skeletor, PostDisplayName },
   data() {
     return {
-      description: '',
-      img: '',
-      displayName: '',
+      description: "",
+      img: "",
+      displayName: "",
       isTextPost: false,
       isImagePost: false,
       isLoading: false,
-    }
+    };
   },
   async mounted() {
-    this.isLoading = true
-    this.$store.dispatch('fetchPosts')
-    this.isLoading = false
+    this.isLoading = true;
+    this.$store.dispatch("fetchPosts");
+    this.isLoading = false;
   },
   computed: {
     posts() {
-      return this.$store.state.posts
+      return this.$store.state.posts;
     },
   },
-}
+  methods: {
+    isPostTruncated(description) {
+      const maxLength = 200; // Giới hạn 200 ký tự
+      return description && description.length > maxLength;
+    },
+    getTruncatedText(description) {
+      const maxLength = 200;
+      if (!description) return '';
+      if (description.length <= maxLength) return description;
+      
+      // Cắt tại vị trí không phá vỡ từ
+      let truncated = description.substring(0, maxLength);
+      const lastSpaceIndex = truncated.lastIndexOf(' ');
+      if (lastSpaceIndex > maxLength * 0.8) { // Chỉ cắt tại space nếu không quá ngắn
+        truncated = truncated.substring(0, lastSpaceIndex);
+      }
+      
+      return truncated + '...';
+    },
+  },
+};
 </script>
 
 <style class="scss" scoped>
@@ -120,6 +160,12 @@ export default {
   padding: 1.5rem;
 }
 
+.user-post-desc {
+  max-width: 100%;
+  overflow: hidden;
+  flex: 1;
+}
+
 .post__user-post a {
   font-weight: bold;
   font-size: 1rem;
@@ -127,6 +173,37 @@ export default {
 
 .post__content {
   font-size: 0.9rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+  max-width: 100%;
+  font-family: inherit;
+  letter-spacing: normal;
+  word-spacing: normal;
+  margin-bottom: 0.5rem;
+}
+
+.post__content--truncated {
+  max-height: 120px;
+  overflow: hidden;
+  position: relative;
+}
+
+.read-more-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: color 0.3s ease;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+.read-more-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
 }
 
 .timeline__image-post {
@@ -154,6 +231,8 @@ export default {
 .image-post__user-post {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  max-width: 100%;
 }
 
 .image-post__user-post a {

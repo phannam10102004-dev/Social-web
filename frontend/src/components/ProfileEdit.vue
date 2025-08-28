@@ -5,9 +5,7 @@
     v-if="openEditProfile"
   >
     <div class="edit-profile-wrapper">
-      <h2 class="edit-profile__title">
-        Edit Profile
-      </h2>
+      <h2 class="edit-profile__title">Edit Profile</h2>
       <label class="input">
         <input
           class="input__field"
@@ -56,9 +54,7 @@
         >Please fill in all fields</span
       >
       <div class="options">
-        <button class="btn-edit" type="submit" v-if="!isLoading">
-          Add
-        </button>
+        <button class="btn-edit" type="submit" v-if="!isLoading">Add</button>
         <sync-loader :color="color" v-if="isLoading"></sync-loader>
         <button
           @click="openEditProfile = !openEditProfile"
@@ -74,101 +70,129 @@
 </template>
 
 <script>
-import axios from 'axios'
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
-import { createToast } from 'mosha-vue-toastify'
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
+import { createToast } from "mosha-vue-toastify";
 
 export default {
-  name: 'ProfileEdit',
+  name: "ProfileEdit",
   components: {
     SyncLoader,
   },
   data() {
     return {
-      displayName: '',
-      description: '',
-      birthDate: '',
-      hobbies: '',
+      displayName: "",
+      description: "",
+      birthDate: "",
+      hobbies: "",
       openEditProfile: true,
       isLoading: false,
       fillError: false,
-      color: 'pink',
-      editingSuccess: '',
-    }
+      color: "pink",
+      editingSuccess: "",
+    };
   },
-  props: ['id'],
+  props: ["id"],
   computed: {
     user() {
-      return this.$store.state.user
+      return this.$store.state.user;
     },
   },
   async mounted() {
-    this.$store.dispatch('fetchUser')
-    this.displayName = this.user.displayName
-    this.description = this.user.description
-    this.birthDate = this.user.birthDate
-    this.hobbies = this.user.hobbies
+    this.$store.dispatch("fetchUser");
+    this.displayName = this.user.displayName;
+    this.description = this.user.description;
+    this.birthDate = this.user.birthDate;
+    this.hobbies = this.user.hobbies;
   },
   methods: {
     onFileChange() {
-      const file = this.$refs.file.files[0]
-      this.file = file
+      const file = this.$refs.file.files[0];
+      this.file = file;
     },
     async editProfile() {
-      const currentUser = this.id
+      const currentUser = this.id;
 
-      const formData = new FormData()
-      formData.append('file', this.file)
+      const formData = new FormData();
+      formData.append("file", this.file);
 
       if (
         this.file == null ||
-        this.displayName === '' ||
-        this.description === '' ||
-        this.birthDate === '' ||
-        this.hobbies === ''
+        this.displayName === "" ||
+        this.description === "" ||
+        this.birthDate === "" ||
+        this.hobbies === ""
       ) {
-        this.fillError = true
+        this.fillError = true;
       } else {
-        this.isLoading = true
-        const responseUser = await axios.put('users/' + currentUser + '/edit', {
-          displayName: this.displayName,
-          description: this.description,
-          birthDate: this.birthDate,
-          hobbies: this.hobbies,
-          profilePicture: this.file.name,
-        })
+        this.isLoading = true;
 
         try {
-          await axios.post('auth/upload', formData)
-        } catch (err) {
-          console.log(err)
+          const responseUser = await fetch(
+            `http://localhost:3000/api/users/${currentUser}/edit`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                displayName: this.displayName,
+                description: this.description,
+                birthDate: this.birthDate,
+                hobbies: this.hobbies,
+                profilePicture: this.file.name,
+              }),
+            }
+          );
+
+          if (responseUser.ok) {
+            await fetch("http://localhost:3000/api/auth/upload", {
+              method: "POST",
+              credentials: "include",
+              body: formData,
+            });
+
+            const getUser = await fetch(
+              `http://localhost:3000/api/users/${currentUser}`,
+              {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                credentials: "include",
+              }
+            );
+
+            if (getUser.ok) {
+              const userData = await getUser.json();
+              this.$emit("updateUser", userData);
+              this.$store.dispatch("fetchUser");
+              this.displayName = "";
+              this.description = "";
+              this.birthDate = "";
+              this.hobbies = "";
+              this.openEditProfile = false;
+              this.editingSuccess = "Your profile was successfully edited!";
+              createToast(
+                {
+                  title: this.editingSuccess,
+                },
+                {
+                  type: "success",
+                  showIcon: true,
+                }
+              );
+            }
+          }
+        } catch (error) {
+          console.error("Edit profile error:", error);
         }
 
-        const getUser = await axios.get('users/' + currentUser)
-
-        const userData = getUser.data
-        this.$emit('updateUser', userData)
-        this.$store.dispatch('fetchUser')
-        this.displayName = ''
-        this.description = ''
-        this.birthDate = ''
-        this.hobbies = ''
-        this.openEditProfile = false
-        this.isLoading = false
-        this.editingSuccess = 'Your profile was successfully edited!'
-        createToast(
-          {
-            title: this.editingSuccess,
-          },
-          {
-            type: 'success',
-            showIcon: true,
-          }
-        )
+        this.isLoading = false;
       }
     },
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>

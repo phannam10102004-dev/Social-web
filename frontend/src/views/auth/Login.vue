@@ -42,6 +42,9 @@
       <p class="warn" v-if="email && !emailError && showEmailError">
         Vui lòng nhập địa chỉ email hợp lệ
       </p>
+      <p class="warn" v-if="error">
+        {{ error }}
+      </p>
       <div class="button-group">
         <div class="button-group-left">
           <div class="login-button-loader" v-if="!loginLoading">
@@ -73,15 +76,11 @@
         />
         Đăng nhập bằng Google
       </button>
-      <p class="warn" v-if="error">
-        {{ error }}
-      </p>
     </div>
   </article>
 </template>
 
 <script>
-import axios from "axios";
 import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
@@ -136,23 +135,35 @@ export default {
         this.showEmailError = false;
       }
 
-      const data = {
-        email: this.email,
-        password: this.password,
-      };
-      await axios.post("auth/login", data).then(
-        (res) => {
-          if (res.status === 200) {
-            this.error = false;
-            localStorage.setItem("token", res.data.token);
-            this.$router.push("/home");
-          }
-        },
-        (err) => {
-          this.error = err.response.data.error;
+      try {
+        const response = await fetch("http://localhost:3000/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            email: this.email,
+            password: this.password,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          this.error = false;
+          localStorage.setItem("token", data.token);
+          this.$router.push("/home");
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          this.error = errorData.error || "Đăng nhập thất bại";
           this.password = "";
         }
-      );
+      } catch (error) {
+        console.log("Network error:", error);
+        this.error = "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
+        this.password = "";
+      }
+
       this.loginLoading = false;
     },
   },

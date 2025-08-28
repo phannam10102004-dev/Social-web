@@ -75,48 +75,85 @@
 </template>
 
 <script>
-import axios from 'axios'
-import { Skeletor } from 'vue-skeletor'
-import ProfileImage from '@/components/ProfileImage'
-import PostDisplayName from '@/components/PostDisplayName'
+import { Skeletor } from "vue-skeletor";
+import ProfileImage from "@/components/ProfileImage";
+import PostDisplayName from "@/components/PostDisplayName";
 
 export default {
-  name: 'ProfileUserPosts',
+  name: "ProfileUserPosts",
   components: {
     Skeletor,
     PostDisplayName,
     ProfileImage,
   },
-  props: ['id'],
+  props: ["id"],
   data() {
     return {
       posts: [],
-      profilePicture: '',
-      userId: '',
+      profilePicture: "",
+      userId: "",
       isSkeletorLoading: false,
       currentUser: false,
-    }
+    };
   },
   computed: {
     user() {
-      return this.$store.state.user
+      return this.$store.state.user;
+    },
+  },
+  watch: {
+    // Watch khi ID thay đổi (chuyển sang profile khác)
+    id: {
+      handler() {
+        this.loadUserPosts();
+      },
+      immediate: false, // Đã gọi trong created()
     },
   },
   async created() {
-    this.isSkeletorLoading = true
+    await this.loadUserPosts();
+  },
+  methods: {
+    async loadUserPosts() {
+      this.isSkeletorLoading = true;
 
-    const responsePosts = await axios.get('posts/' + this.id + '/posts')
-    this.posts = responsePosts.data.sort((p1, p2) => {
-      return new Date(p2.createdAt) - new Date(p1.createdAt)
-    })
-    //is current user
-    if (this.id === this.user._id) this.currentUser = true
-    this.isSkeletorLoading = false
+      try {
+        // Đảm bảo fetchUser hoàn thành trước
+        await this.$store.dispatch("fetchUser");
+
+        const responsePosts = await fetch(
+          `http://localhost:3000/api/posts/${this.id}/posts`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          }
+        );
+
+        if (responsePosts.ok) {
+          const data = await responsePosts.json();
+          this.posts = data.sort((p1, p2) => {
+            return new Date(p2.createdAt) - new Date(p1.createdAt);
+          });
+        }
+
+        //is current user - kiểm tra an toàn
+        const currentUserId = this.$store.state.user?._id;
+        if (currentUserId && this.id === currentUserId) {
+          this.currentUser = true;
+        } else {
+          this.currentUser = false;
+        }
+      } catch (error) {
+        console.error("Fetch user posts error:", error);
+      }
+
+      this.isSkeletorLoading = false;
+    },
   },
-  async mounted() {
-    this.$store.dispatch('fetchUser')
-  },
-}
+};
 </script>
 
 <style scoped>

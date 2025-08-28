@@ -57,8 +57,7 @@
       </button>
       <button
         @click="
-          ;(openAddImageComment = !openAddImageComment),
-            (openAddComment = false)
+          (openAddImageComment = !openAddImageComment), (openAddComment = false)
         "
         class="btn btn-textadd"
       >
@@ -66,9 +65,7 @@
       </button>
     </div>
     <div class="add-post" v-if="openAddComment">
-      <h2 class="add-post__title">
-        Add a Comment
-      </h2>
+      <h2 class="add-post__title">Add a Comment</h2>
       <label class="input">
         <input
           class="input__field"
@@ -108,9 +105,7 @@
       v-if="openAddImageComment"
       enctype="multipart/form-data"
     >
-      <h2 class="add-post__title">
-        Add an Image Comment
-      </h2>
+      <h2 class="add-post__title">Add an Image Comment</h2>
       <label class="input">
         <input
           class="input__field"
@@ -125,9 +120,7 @@
         >Please fill in all fields</span
       >
       <div class="options">
-        <button type="submit" class="btn-addpost" v-if="!isLoading">
-          Add
-        </button>
+        <button type="submit" class="btn-addpost" v-if="!isLoading">Add</button>
         <sync-loader :color="color" v-if="isLoading"></sync-loader>
         <button
           @click="openAddImageComment = !openAddImageComment"
@@ -142,121 +135,188 @@
 </template>
 
 <script>
-import axios from 'axios'
-import ProfileImage from '@/components/ProfileImage'
-import PostDisplayName from '@/components/PostDisplayName'
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
-import { Skeletor } from 'vue-skeletor'
-import { createToast } from 'mosha-vue-toastify'
+import ProfileImage from "@/components/ProfileImage";
+import PostDisplayName from "@/components/PostDisplayName";
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
+import { Skeletor } from "vue-skeletor";
+import { createToast } from "mosha-vue-toastify";
 
 export default {
-  name: 'PostDetail',
-  props: ['id'],
+  name: "PostDetail",
+  props: ["id"],
   components: { ProfileImage, SyncLoader, Skeletor, PostDisplayName },
   data() {
     return {
       posts: [],
       comments: [],
       user: [],
-      commentModel: '',
+      commentModel: "",
       openAddComment: false,
       openAddImageComment: false,
       fillError: false,
-      file: '',
+      file: "",
       isTextComment: false,
-      userId: '',
+      userId: "",
       isLoading: false,
       isSkeletorLoading: false,
-      color: 'pink',
-      commentingSuccess: '',
-    }
+      color: "pink",
+      commentingSuccess: "",
+    };
   },
   async created() {
-    this.isSkeletorLoading = true
+    this.isSkeletorLoading = true;
 
-    this.$store.dispatch('fetchUser')
-    this.user = this.$store.state.user
+    try {
+      this.$store.dispatch("fetchUser");
+      this.user = this.$store.state.user;
 
-    const responsePost = await axios.get('posts/' + this.id)
-    this.posts = responsePost.data
+      const responsePost = await fetch(
+        `http://localhost:3000/api/posts/${this.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }
+      );
 
-    const responseComment = await axios.get('posts/' + this.id + '/comments')
-    this.comments = responseComment.data
+      if (responsePost.ok) {
+        this.posts = await responsePost.json();
+      }
 
-    this.isSkeletorLoading = false
+      const responseComment = await fetch(
+        `http://localhost:3000/api/posts/${this.id}/comments`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }
+      );
+
+      if (responseComment.ok) {
+        this.comments = await responseComment.json();
+      }
+    } catch (error) {
+      console.error("Fetch post detail error:", error);
+    }
+
+    this.isSkeletorLoading = false;
   },
   methods: {
     onFileChange() {
-      const file = this.$refs.file.files[0]
-      this.file = file
+      const file = this.$refs.file.files[0];
+      this.file = file;
     },
     async addComment() {
-      if (this.commentModel === '') {
-        this.fillError = true
+      if (this.commentModel === "") {
+        this.fillError = true;
       } else {
-        this.isLoading = true
+        this.isLoading = true;
 
-        const response = await axios.put('posts/' + this.id + '/comment', {
-          comment: this.commentModel,
-          userId: this.$store.state.user._id,
-          postId: this.id,
-          displayName: this.user.displayName,
-          isTextComment: true,
-        })
-        this.comments.push(response.data)
-        this.commentModel = ''
-        this.isLoading = false
-        this.openAddComment = false
-        this.commentingSuccess = 'Your comment was successfully added!'
-        createToast(
-          {
-            title: this.commentingSuccess,
-          },
-          {
-            type: 'success',
-            showIcon: true,
+        try {
+          const response = await fetch(
+            `http://localhost:3000/api/posts/${this.id}/comment`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                comment: this.commentModel,
+                userId: this.$store.state.user._id,
+                postId: this.id,
+                displayName: this.user.displayName,
+                isTextComment: true,
+              }),
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            this.comments.push(data);
+            this.commentModel = "";
+            this.openAddComment = false;
+            this.commentingSuccess = "Your comment was successfully added!";
+            createToast(
+              {
+                title: this.commentingSuccess,
+              },
+              {
+                type: "success",
+                showIcon: true,
+              }
+            );
           }
-        )
+        } catch (error) {
+          console.error("Add comment error:", error);
+        }
+
+        this.isLoading = false;
       }
     },
     async addImageComment() {
-      const formData = new FormData()
-      formData.append('file', this.file)
+      const formData = new FormData();
+      formData.append("file", this.file);
 
       if (!this.file) {
-        this.fillError = true
+        this.fillError = true;
       } else {
-        this.isLoading = true
+        this.isLoading = true;
 
-        const response = await axios.put('posts/' + this.id + '/comment', {
-          userId: this.$store.state.user._id,
-          postId: this.id,
-          displayName: this.user.displayName,
-          file: this.file.name,
-          isTextComment: false,
-        })
-        this.comments.push(response.data)
         try {
-          await axios.post('posts/upload', formData)
-        } catch (err) {
-          console.log(err)
-        }
-        this.isLoading = false
-        this.openAddImageComment = false
-        this.commentingSuccess = 'Your comment was successfully added!'
-        createToast(
-          {
-            title: this.commentingSuccess,
-          },
-          {
-            type: 'success',
-            showIcon: true,
+          const response = await fetch(
+            `http://localhost:3000/api/posts/${this.id}/comment`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                userId: this.$store.state.user._id,
+                postId: this.id,
+                displayName: this.user.displayName,
+                file: this.file.name,
+                isTextComment: false,
+              }),
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            this.comments.push(data);
+
+            await fetch("http://localhost:3000/api/posts/upload", {
+              method: "POST",
+              credentials: "include",
+              body: formData,
+            });
+
+            this.openAddImageComment = false;
+            this.commentingSuccess = "Your comment was successfully added!";
+            createToast(
+              {
+                title: this.commentingSuccess,
+              },
+              {
+                type: "success",
+                showIcon: true,
+              }
+            );
           }
-        )
+        } catch (error) {
+          console.error("Add image comment error:", error);
+        }
+
+        this.isLoading = false;
       }
     },
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>

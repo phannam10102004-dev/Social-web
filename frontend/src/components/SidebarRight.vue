@@ -35,25 +35,37 @@
 </template>
 
 <script>
-import axios from 'axios'
-import { Skeletor } from 'vue-skeletor'
+import { Skeletor } from "vue-skeletor";
 
 export default {
-  name: 'SidebarRight',
+  name: "SidebarRight",
   components: { Skeletor },
   data() {
     return {
       users: [],
       isLoading: false,
-    }
+    };
   },
   async created() {
-    this.isLoading = true
-    const responseUsers = await axios.get('users/')
-    this.users = responseUsers.data
-    this.isLoading = false
+    this.isLoading = true;
+    try {
+      const response = await fetch("http://localhost:3000/api/users/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        this.users = await response.json();
+      }
+    } catch (error) {
+      console.error("Fetch users error:", error);
+    }
+    this.isLoading = false;
   },
-}
+};
 </script>
 
 <style scoped>

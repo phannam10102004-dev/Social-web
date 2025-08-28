@@ -52,8 +52,7 @@
       <p class="warn" v-if="email && !emailError && showEmailError">
         Vui lòng nhập địa chỉ email hợp lệ
       </p>
-      <p style="color: red" v-if="signupError">{{ signupError }}</p>
-      <pre>{{ signupError }}</pre>
+      <p class="warn" v-if="signupError">{{ signupError }}</p>
       <div class="button-group">
         <div class="button-group-left">
           <div class="signup-button-loader" v-if="!signupLoading">
@@ -90,7 +89,6 @@
 </template>
 
 <script>
-import axios from "axios";
 import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
@@ -107,71 +105,127 @@ export default {
       signupLoading: false,
       showPassword: false,
       signupError: "",
-
       color: "pink",
     };
   },
   watch: {
     email() {
-      this.showEmailError = false;
+      this.resetErrors();
+    },
+    password() {
+      this.resetErrors();
+    },
+    displayName() {
+      this.resetErrors();
     },
   },
   methods: {
+    resetErrors() {
+      this.signupError = "";
+      this.fillError = false;
+      this.emailError = false;
+      this.showEmailError = false;
+    },
     signUpWithGoogle() {
-      // TODO: Thêm logic đăng ký bằng Google ở đây
       alert("Chức năng đăng ký bằng Google sẽ được cập nhật!");
     },
     validateEmail() {
-      // Trả về true nếu email hợp lệ, false nếu không hợp lệ
       return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email);
     },
     async signUp() {
+      // Reset states
       this.signupLoading = true;
-      this.showEmailError = false;
       this.signupError = "";
+      this.fillError = false;
+      this.showEmailError = false;
 
-      // Validate input rỗng
+      // Validate inputs
       if (!this.email || !this.password || !this.displayName) {
         this.fillError = true;
         this.signupLoading = false;
         return;
       }
-      this.fillError = false;
 
-      // Validate email
       if (!this.validateEmail()) {
-        this.emailError = false;
         this.showEmailError = true;
         this.signupLoading = false;
         return;
-      } else {
-        this.emailError = true;
-        this.showEmailError = false;
       }
 
       try {
-        const res = await axios.post("auth/register", {
+        console.log(
+          "Sending request with fetch to: http://localhost:3000/api/auth/register"
+        );
+        console.log("Request data:", {
           email: this.email,
           password: this.password,
           displayName: this.displayName,
         });
 
-        // Nếu đăng ký thành công
-        if (res && res.status === 200) {
-          await this.$router.push("/login");
-        }
-      } catch (err) {
-        console.log("Axios error"); // Debug log
+        const response = await fetch(
+          "http://localhost:3000/api/auth/register",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              email: this.email,
+              password: this.password,
+              displayName: this.displayName,
+            }),
+          }
+        );
 
-        if (err.response && err.response.data && err.response.data.error) {
-          this.signupError = err.response.data.error; // Backend trả về
+        console.log("Response status:", response.status);
+        console.log("Response ok:", response.ok);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Đăng ký thành công:", data);
+
+          // Reset form
+          this.email = "";
+          this.password = "";
+          this.displayName = "";
+
+          // Chuyển trang
+          await this.$router.push("/login");
         } else {
-          this.signupError = "Đăng ký thất bại. Vui lòng thử lại.";
+          // Có lỗi (status 400, 500, etc.)
+          let errorData = {};
+          try {
+            errorData = await response.json();
+            console.log("Error data from server:", errorData);
+          } catch (e) {
+            console.log("Cannot parse error response as JSON");
+          }
+
+          if (response.status === 400) {
+            this.signupError =
+              errorData.error || errorData.message || "Email đã được sử dụng.";
+            console.log("Set error 400:", this.signupError);
+          } else if (response.status === 500) {
+            this.signupError = "Lỗi server. Vui lòng thử lại sau.";
+          } else if (response.status === 422) {
+            this.signupError =
+              errorData.error || errorData.message || "Dữ liệu không hợp lệ.";
+          } else {
+            this.signupError =
+              errorData.error ||
+              errorData.message ||
+              "Đăng ký thất bại. Vui lòng thử lại.";
+          }
         }
+      } catch (error) {
+        console.log("Network error:", error);
+        this.signupError =
+          "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
       } finally {
         this.signupLoading = false;
+        console.log("Final signupError:", this.signupError);
       }
-      debugger;
     },
   },
 };
@@ -247,6 +301,7 @@ export default {
     border-radius: var(--size-radius);
     margin-bottom: 1rem;
 
+    &:-webkit-autofill,
     &:focus,
     &:not(:placeholder-shown) {
       & + .input__label {
@@ -256,6 +311,12 @@ export default {
         padding: 0 0.3em;
         z-index: 2;
       }
+    }
+
+    // Xử lý màu nền khi autofill
+    &:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 30px white inset !important;
+      -webkit-text-fill-color: currentColor !important;
     }
   }
 }

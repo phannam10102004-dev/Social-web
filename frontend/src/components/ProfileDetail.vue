@@ -108,20 +108,19 @@
 </template>
 
 <script>
-import ProfileUserPosts from '@/components/ProfileUserPosts'
-import ProfileEdit from '@/components/ProfileEdit'
-import axios from 'axios'
-import { Skeletor } from 'vue-skeletor'
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
+import ProfileUserPosts from "@/components/ProfileUserPosts";
+import ProfileEdit from "@/components/ProfileEdit";
+import { Skeletor } from "vue-skeletor";
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
-  name: 'ProfileDetail',
-  props: ['id'],
+  name: "ProfileDetail",
+  props: ["id"],
   components: { ProfileUserPosts, Skeletor, SyncLoader, ProfileEdit },
   data() {
     return {
       user: [],
-      color: 'pink',
+      color: "pink",
       followers: 0,
       following: 0,
       isFollowing: false,
@@ -129,65 +128,157 @@ export default {
       followLoading: false,
       currentUser: false,
       openEditProfile: false,
-    }
+    };
+  },
+  watch: {
+    // Watch khi ID thay đổi (chuyển sang profile khác)
+    id: {
+      handler() {
+        this.loadProfileData();
+      },
+      immediate: false, // Đã gọi trong created()
+    },
   },
   async created() {
-    this.isSkeletorLoading = true
-
-    const responseUser = await axios.get('users/' + this.id)
-
-    this.$store.dispatch('fetchUser')
-    const currentUser = this.$store.state.user._id
-
-    const userData = responseUser.data
-    if (currentUser === userData._id) this.currentUser = true
-    this.user = userData
-    this.followers = userData.followers.length
-    this.following = userData.followings.length
-    this.isFollowing = userData.followers.includes(currentUser)
-    this.isSkeletorLoading = false
+    await this.loadProfileData();
   },
   methods: {
+    async loadProfileData() {
+      this.isSkeletorLoading = true;
+
+      try {
+        // Đảm bảo fetchUser hoàn thành trước
+        await this.$store.dispatch("fetchUser");
+        const currentUser = this.$store.state.user?._id;
+
+        const response = await fetch(
+          `http://localhost:3000/api/users/${this.id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          }
+        );
+
+        if (response.ok) {
+          const userData = await response.json();
+          if (currentUser === userData._id) this.currentUser = true;
+          this.user = userData;
+          this.followers = userData.followers?.length || 0;
+          this.following = userData.followings?.length || 0;
+          this.isFollowing = currentUser
+            ? userData.followers?.includes(currentUser)
+            : false;
+        }
+      } catch (error) {
+        console.error("Fetch user error:", error);
+      }
+
+      this.isSkeletorLoading = false;
+    },
     async followUser() {
-      this.followLoading = true
-      this.followers++
+      this.followLoading = true;
+      this.followers++;
 
-      const currentUser = this.$store.state.user._id
-      const responseUser = await axios.get('users/' + this.id)
-      const userData = responseUser.data
-      const profileUser = this.$store.state.user
+      try {
+        const currentUser = this.$store.state.user._id;
 
-      const responseFollow = await axios.put('users/' + this.id + '/follow', {
-        userId: currentUser,
-      })
-      this.followLoading = false
-      this.isFollowing = !profileUser.followers.includes(currentUser)
-      this.following = userData.followings.length
+        const responseUser = await fetch(
+          `http://localhost:3000/api/users/${this.id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          }
+        );
+
+        if (responseUser.ok) {
+          const userData = await responseUser.json();
+          const profileUser = this.$store.state.user;
+
+          const responseFollow = await fetch(
+            `http://localhost:3000/api/users/${this.id}/follow`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                userId: currentUser,
+              }),
+            }
+          );
+
+          if (responseFollow.ok) {
+            this.isFollowing = !profileUser.followers.includes(currentUser);
+            this.following = userData.followings.length;
+          }
+        }
+      } catch (error) {
+        console.error("Follow user error:", error);
+        this.followers--; // Revert on error
+      }
+
+      this.followLoading = false;
     },
     async unFollowUser() {
-      this.followLoading = true
-      this.followers--
+      this.followLoading = true;
+      this.followers--;
 
-      const currentUser = this.$store.state.user._id
-      const responseUser = await axios.get('users/' + this.id)
-      const userData = responseUser.data
-      const profileUser = this.$store.state.user
+      try {
+        const currentUser = this.$store.state.user._id;
 
-      const responseUnFollow = await axios.put(
-        'users/' + this.id + '/unfollow',
-        {
-          userId: currentUser,
+        const responseUser = await fetch(
+          `http://localhost:3000/api/users/${this.id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          }
+        );
+
+        if (responseUser.ok) {
+          const userData = await responseUser.json();
+          const profileUser = this.$store.state.user;
+
+          const responseUnFollow = await fetch(
+            `http://localhost:3000/api/users/${this.id}/unfollow`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                userId: currentUser,
+              }),
+            }
+          );
+
+          if (responseUnFollow.ok) {
+            this.isFollowing = profileUser.followers.includes(currentUser);
+            this.following = userData.followings.length;
+          }
         }
-      )
-      this.followLoading = false
-      this.isFollowing = profileUser.followers.includes(currentUser)
-      this.following = userData.followings.length
+      } catch (error) {
+        console.error("Unfollow user error:", error);
+        this.followers++; // Revert on error
+      }
+
+      this.followLoading = false;
     },
     updateUser(user) {
-      this.user = user || []
+      this.user = user || [];
     },
   },
-}
+};
 </script>
 
 <style scoped>
