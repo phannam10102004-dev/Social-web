@@ -16,17 +16,14 @@
       />
       <div class="main-post" v-else>
         <ProfileImage :id="posts.userId" class="text-post__img" />
-        <div class="text-post__user-post" v-if="posts.isTextPost">
+        <div class="post__user-content">
           <PostDisplayName :id="posts.userId" />
-          <p class="text-post__content">
+          <p class="text-post__content" v-if="posts.description">
             {{ posts.description }}
           </p>
-        </div>
-        <div class="image-post__user-post" v-else>
-          <PostDisplayName :id="posts.userId" />
           <img
             v-if="posts.file"
-            class="image-post__img"
+            class="post-detail-main-img"
             :src="`http://localhost:3000/uploads/${posts.file}`"
           />
         </div>
@@ -34,103 +31,55 @@
       <div class="comments">
         <div class="comment" v-for="comment in comments" :key="comment._id">
           <ProfileImage :id="comment.userId" class="text-post__img" />
-          <div class="text-post__user-post" v-if="comment.isTextComment">
+          <div class="comment__content">
             <PostDisplayName :id="comment.userId" />
-            <p class="text-post__content">
+            <p class="text-post__content" v-if="comment.comment">
               {{ comment.comment }}
             </p>
-          </div>
-          <div class="image-post__user-post" v-else>
-            <PostDisplayName :id="comment.userId" />
             <img
               v-if="comment.file"
-              class="image-post__img"
+              class="post-detail-main-img"
               :src="`http://localhost:3000/uploads/${comment.file}`"
             />
           </div>
         </div>
       </div>
     </div>
-    <div class="comment-buttons">
-      <button @click="openAddComment = !openAddComment" class="btn btn-textadd">
-        Add a Text Comment
-      </button>
-      <button
-        @click="
-          (openAddImageComment = !openAddImageComment), (openAddComment = false)
-        "
-        class="btn btn-textadd"
-      >
-        Add an Image Comment
-      </button>
-    </div>
-    <div class="add-post" v-if="openAddComment">
-      <h2 class="add-post__title">Add a Comment</h2>
-      <label class="input">
-        <input
-          class="input__field"
-          type="text"
-          placeholder=" "
+
+    <!-- Comment input box luôn hiển thị -->
+    <div class="comment-input-box">
+      <ProfileImage :id="user._id" class="comment-avatar" />
+      <div class="comment-input-container">
+        <textarea
           v-model="commentModel"
-          data-test="comment"
-        />
-        <span class="input__label">Comment</span>
-      </label>
-      <span class="input__label warn" v-if="fillError"
-        >Please fill in all fields
-      </span>
-      <div class="options">
-        <button
-          class="btn-addpost"
-          id="btn-comment"
-          type="button"
-          @click="addComment"
-          v-if="!isLoading"
-        >
-          Add
-        </button>
-        <sync-loader :color="color" v-if="isLoading"></sync-loader>
-        <button
-          @click="openAddComment = !openAddComment"
-          class="btn-addpost"
-          v-if="!isLoading"
-        >
-          Close
-        </button>
+          placeholder="Viết bình luận..."
+          class="comment-textarea"
+          @keydown.enter.exact.prevent="addComment"
+          rows="1"
+        ></textarea>
+        <div class="comment-actions">
+          <input
+            type="file"
+            @change="onFileChange"
+            ref="file"
+            name="file"
+            class="file-input"
+            accept="image/*"
+          />
+          <button @click="$refs.file.click()" class="attach-btn" type="button">
+            📷
+          </button>
+          <button
+            @click="addComment"
+            class="send-btn"
+            type="button"
+            :disabled="!commentModel.trim() && !file"
+          >
+            Gửi
+          </button>
+        </div>
       </div>
     </div>
-    <form
-      class="add-post"
-      @submit.prevent="addImageComment"
-      v-if="openAddImageComment"
-      enctype="multipart/form-data"
-    >
-      <h2 class="add-post__title">Add an Image Comment</h2>
-      <label class="input">
-        <input
-          class="input__field"
-          type="file"
-          @change="onFileChange"
-          ref="file"
-          name="file"
-        />
-        <span class="input__label">Image</span>
-      </label>
-      <span class="input__label warn" v-if="fillError"
-        >Please fill in all fields</span
-      >
-      <div class="options">
-        <button type="submit" class="btn-addpost" v-if="!isLoading">Add</button>
-        <sync-loader :color="color" v-if="isLoading"></sync-loader>
-        <button
-          @click="openAddImageComment = !openAddImageComment"
-          class="btn-addpost"
-          v-if="!isLoading"
-        >
-          Close
-        </button>
-      </div>
-    </form>
   </div>
 </template>
 
@@ -151,16 +100,11 @@ export default {
       comments: [],
       user: [],
       commentModel: "",
-      openAddComment: false,
-      openAddImageComment: false,
       fillError: false,
       file: "",
-      isTextComment: false,
-      userId: "",
       isLoading: false,
       isSkeletorLoading: false,
       color: "pink",
-      commentingSuccess: "",
     };
   },
   async created() {
@@ -211,109 +155,78 @@ export default {
       this.file = file;
     },
     async addComment() {
-      if (this.commentModel === "") {
+      // Kiểm tra có comment text hoặc file
+      if (!this.commentModel.trim() && !this.file) {
         this.fillError = true;
-      } else {
-        this.isLoading = true;
-
-        try {
-          const response = await fetch(
-            `http://localhost:3000/api/posts/${this.id}/comment`,
-            {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              credentials: "include",
-              body: JSON.stringify({
-                comment: this.commentModel,
-                userId: this.$store.state.user._id,
-                postId: this.id,
-                displayName: this.user.displayName,
-                isTextComment: true,
-              }),
-            }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            this.comments.push(data);
-            this.commentModel = "";
-            this.openAddComment = false;
-            this.commentingSuccess = "Your comment was successfully added!";
-            createToast(
-              {
-                title: this.commentingSuccess,
-              },
-              {
-                type: "success",
-                showIcon: true,
-              }
-            );
-          }
-        } catch (error) {
-          console.error("Add comment error:", error);
-        }
-
-        this.isLoading = false;
+        return;
       }
-    },
-    async addImageComment() {
-      const formData = new FormData();
-      formData.append("file", this.file);
 
-      if (!this.file) {
-        this.fillError = true;
-      } else {
-        this.isLoading = true;
+      this.isLoading = true;
+      this.fillError = false;
 
-        try {
-          const response = await fetch(
-            `http://localhost:3000/api/posts/${this.id}/comment`,
+      try {
+        // Nếu có file, upload file trước
+        if (this.file) {
+          const formData = new FormData();
+          formData.append("file", this.file);
+
+          const uploadResponse = await fetch(
+            "http://localhost:3000/api/posts/upload",
             {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              credentials: "include",
-              body: JSON.stringify({
-                userId: this.$store.state.user._id,
-                postId: this.id,
-                displayName: this.user.displayName,
-                file: this.file.name,
-                isTextComment: false,
-              }),
-            }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            this.comments.push(data);
-
-            await fetch("http://localhost:3000/api/posts/upload", {
               method: "POST",
               credentials: "include",
               body: formData,
-            });
+            }
+          );
 
-            this.openAddImageComment = false;
-            this.commentingSuccess = "Your comment was successfully added!";
-            createToast(
-              {
-                title: this.commentingSuccess,
-              },
-              {
-                type: "success",
-                showIcon: true,
-              }
-            );
+          if (!uploadResponse.ok) {
+            throw new Error("File upload failed");
           }
-        } catch (error) {
-          console.error("Add image comment error:", error);
         }
 
-        this.isLoading = false;
+        // Thêm comment với text và/hoặc file
+        const response = await fetch(
+          `http://localhost:3000/api/posts/${this.id}/comment`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              comment: this.commentModel.trim() || undefined,
+              userId: this.$store.state.user._id,
+              postId: this.id,
+              displayName: this.user.displayName,
+              file: this.file ? this.file.name : undefined,
+              isTextComment: !this.file, // true nếu chỉ có text, false nếu có file
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          this.comments.push(data);
+
+          // Reset form
+          this.commentModel = "";
+          this.file = "";
+          this.$refs.file.value = "";
+        }
+      } catch (error) {
+        console.error("Add comment error:", error);
+        createToast(
+          {
+            title: "Có lỗi xảy ra khi thêm bình luận",
+          },
+          {
+            type: "error",
+            showIcon: true,
+          }
+        );
       }
+
+      this.isLoading = false;
     },
   },
 };
@@ -322,6 +235,8 @@ export default {
 <style lang="scss" scoped>
 .post-detail {
   width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -360,10 +275,28 @@ export default {
 
 .text-post__content {
   font-size: 0.9rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+  max-width: 100%;
+  font-family: inherit;
+  letter-spacing: normal;
+  word-spacing: normal;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
 }
 
 .main-post {
   display: flex;
+}
+
+.post__user-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  max-width: 100%;
 }
 
 .comments {
@@ -379,6 +312,13 @@ export default {
   border-radius: 35px;
   box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.1);
   padding: 2rem;
+}
+
+.comment__content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  max-width: 100%;
 }
 
 .btn-textadd {
@@ -514,12 +454,98 @@ export default {
   margin-right: 1rem;
 }
 
-.image-post__user-post img {
-  width: 500px;
-  height: 100%;
-  border-radius: 7px;
-  max-height: 350px;
-  object-fit: cover;
+.post-detail-main-img {
+  min-width: 360px;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  display: block;
+  margin: 0.5rem 0;
+}
+
+.comment-input-box {
+  display: flex;
+  align-items: flex-start;
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 1rem;
+  gap: 0.75rem;
+}
+
+.comment-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.comment-input-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comment-textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.75rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  resize: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.comment-textarea:focus {
+  border-color: #007bff;
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.attach-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+
+.attach-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.send-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.send-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.send-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 .comment-buttons {

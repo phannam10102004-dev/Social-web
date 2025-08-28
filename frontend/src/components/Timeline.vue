@@ -28,10 +28,15 @@
           <div class="post__user-post" v-if="post.isTextPost">
             <PostDisplayName :id="post.userId" />
             <div class="user-post-desc">
-              <p class="post__content" :class="{ 'post__content--truncated': isPostTruncated(post.description) }">
+              <p
+                class="post__content"
+                :class="{
+                  'post__content--truncated': isPostTruncated(post.description),
+                }"
+              >
                 {{ getTruncatedText(post.description) }}
               </p>
-              <router-link 
+              <router-link
                 v-if="isPostTruncated(post.description)"
                 :to="{ name: 'PostDetail', params: { id: post._id } }"
                 class="read-more-link"
@@ -46,10 +51,15 @@
           <div class="image-post__user-post" v-else>
             <PostDisplayName :id="post.userId" />
             <div class="user-post-desc img-desc">
-              <p class="post__content" :class="{ 'post__content--truncated': isPostTruncated(post.description) }">
+              <p
+                class="post__content"
+                :class="{
+                  'post__content--truncated': isPostTruncated(post.description),
+                }"
+              >
                 {{ getTruncatedText(post.description) }}
               </p>
-              <router-link 
+              <router-link
                 v-if="isPostTruncated(post.description)"
                 :to="{ name: 'PostDetail', params: { id: post._id } }"
                 class="read-more-link"
@@ -106,17 +116,18 @@ export default {
     },
     getTruncatedText(description) {
       const maxLength = 200;
-      if (!description) return '';
+      if (!description) return "";
       if (description.length <= maxLength) return description;
-      
+
       // Cắt tại vị trí không phá vỡ từ
       let truncated = description.substring(0, maxLength);
-      const lastSpaceIndex = truncated.lastIndexOf(' ');
-      if (lastSpaceIndex > maxLength * 0.8) { // Chỉ cắt tại space nếu không quá ngắn
+      const lastSpaceIndex = truncated.lastIndexOf(" ");
+      if (lastSpaceIndex > maxLength * 0.8) {
+        // Chỉ cắt tại space nếu không quá ngắn
         truncated = truncated.substring(0, lastSpaceIndex);
       }
-      
-      return truncated + '...';
+
+      return truncated + "...";
     },
   },
 };
