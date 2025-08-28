@@ -28,6 +28,20 @@
           />
         </div>
       </div>
+
+      <!-- Action Bar - Thanh Thích/Bình luận -->
+      <div class="post-actions">
+        <button class="action-btn like-btn" @click="toggleLike">
+          <span class="action-icon">👍</span>
+          <span :class="{ liked: isLiked }">Thích</span>
+        </button>
+
+        <button class="action-btn comment-btn" @click="focusCommentInput">
+          <span class="action-icon">💬</span>
+          <span>Bình luận</span>
+        </button>
+      </div>
+
       <div class="comments">
         <div class="comment" v-for="comment in comments" :key="comment._id">
           <ProfileImage :id="comment.userId" class="text-post__img" />
@@ -51,6 +65,7 @@
       <ProfileImage :id="user._id" class="comment-avatar" />
       <div class="comment-input-container">
         <textarea
+          ref="commentTextarea"
           v-model="commentModel"
           placeholder="Viết bình luận..."
           class="comment-textarea"
@@ -105,6 +120,7 @@ export default {
       isLoading: false,
       isSkeletorLoading: false,
       color: "pink",
+      isLiked: false,
     };
   },
   async created() {
@@ -150,6 +166,15 @@ export default {
     this.isSkeletorLoading = false;
   },
   methods: {
+    toggleLike() {
+      this.isLiked = !this.isLiked;
+      // TODO: Gọi API để like/unlike post
+    },
+
+    focusCommentInput() {
+      this.$refs.commentTextarea.focus();
+    },
+
     onFileChange() {
       const file = this.$refs.file.files[0];
       this.file = file;
@@ -300,6 +325,7 @@ export default {
 }
 
 .comments {
+  background-color: #f9f9f9;
   margin-top: 1rem;
   margin-left: 2rem;
 }
@@ -461,6 +487,51 @@ export default {
   border-radius: 0 !important;
   display: block;
   margin: 0.5rem 0;
+}
+
+.post-actions {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0.75rem 0;
+  margin: 1rem 0;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.3s ease;
+  flex: 1;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.action-icon {
+  font-size: 1.1rem;
+}
+
+.liked {
+  color: #007bff !important;
+}
+
+.like-btn.liked .action-icon {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%)
+    hue-rotate(346deg) brightness(104%) contrast(97%);
 }
 
 .comment-input-box {

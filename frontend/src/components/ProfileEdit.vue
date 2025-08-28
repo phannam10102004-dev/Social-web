@@ -5,7 +5,7 @@
     v-if="openEditProfile"
   >
     <div class="edit-profile-wrapper">
-      <h2 class="edit-profile__title">Edit Profile</h2>
+      <h2 class="edit-profile__title">Chỉnh sửa thông tin cá nhân</h2>
       <label class="input">
         <input
           class="input__field"
@@ -13,7 +13,7 @@
           placeholder=" "
           v-model="displayName"
         />
-        <span class="input__label">Display Name</span>
+        <span class="input__label">Tên hiển thị</span>
       </label>
       <label class="input">
         <input
@@ -22,7 +22,7 @@
           placeholder=" "
           v-model="description"
         />
-        <span class="input__label">About me</span>
+        <span class="input__label">Giới thiệu bản thân</span>
       </label>
       <label class="input">
         <input
@@ -31,7 +31,7 @@
           placeholder=" "
           v-model="hobbies"
         />
-        <span class="input__label">Hobbies</span>
+        <span class="input__label">Sở thích</span>
       </label>
       <input
         class="input__field"
@@ -48,13 +48,13 @@
           name="file"
           accept="image/*"
         />
-        <span class="input__label">Upload a Profile Picture</span>
+        <span class="input__label">Tải lên ảnh đại diện</span>
       </label>
       <span class="input__label warn" v-if="fillError"
-        >Please fill in all fields</span
+        >Vui lòng điền tất cả thông tin</span
       >
       <div class="options">
-        <button class="btn-edit" type="submit" v-if="!isLoading">Add</button>
+        <button class="btn-edit" type="submit" v-if="!isLoading">Thêm</button>
         <sync-loader :color="color" v-if="isLoading"></sync-loader>
         <button
           @click="openEditProfile = !openEditProfile"
@@ -62,7 +62,7 @@
           v-if="!isLoading"
           type="button"
         >
-          Close
+          Đóng
         </button>
       </div>
     </div>
