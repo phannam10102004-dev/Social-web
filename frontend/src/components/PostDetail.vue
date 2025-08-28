@@ -41,21 +41,62 @@
           <span>Bình luận</span>
         </button>
       </div>
-
-      <div class="comments">
-        <div class="comment" v-for="comment in comments" :key="comment._id">
-          <ProfileImage :id="comment.userId" class="text-post__img" />
+      
+      <!-- Comments Section -->
+      <div class="comments" v-if="comments.length > 0">
+        <!-- Hiển thị 1 comment đầu tiên -->
+        <div class="comment" v-if="comments.length > 0">
+          <ProfileImage :id="comments[0].userId" class="text-post__img" />
           <div class="comment__content">
-            <PostDisplayName :id="comment.userId" />
-            <p class="text-post__content" v-if="comment.comment">
-              {{ comment.comment }}
+            <PostDisplayName :id="comments[0].userId" />
+            <p class="text-post__content" v-if="comments[0].comment">
+              {{ comments[0].comment }}
             </p>
             <img
-              v-if="comment.file"
+              v-if="comments[0].file"
               class="post-detail-main-img"
-              :src="`http://localhost:3000/uploads/${comment.file}`"
+              :src="`http://localhost:3000/uploads/${comments[0].file}`"
             />
           </div>
+        </div>
+        
+        <!-- Nút Xem thêm bình luận -->
+        <button 
+          v-if="!showAllComments && comments.length > 1" 
+          @click="toggleAllComments"
+          class="view-more-btn"
+        >
+          Xem thêm {{ comments.length - 1 }} bình luận
+        </button>
+        
+        <!-- Hiển thị tất cả comments còn lại khi showAllComments = true -->
+        <div v-if="showAllComments">
+          <div 
+            class="comment" 
+            v-for="(comment, index) in comments.slice(1)" 
+            :key="comment._id"
+          >
+            <ProfileImage :id="comment.userId" class="text-post__img" />
+            <div class="comment__content">
+              <PostDisplayName :id="comment.userId" />
+              <p class="text-post__content" v-if="comment.comment">
+                {{ comment.comment }}
+              </p>
+              <img
+                v-if="comment.file"
+                class="post-detail-main-img"
+                :src="`http://localhost:3000/uploads/${comment.file}`"
+              />
+            </div>
+          </div>
+          
+          <!-- Nút Ẩn bớt bình luận -->
+          <button 
+            @click="toggleAllComments"
+            class="view-more-btn"
+          >
+            Ẩn bớt bình luận
+          </button>
         </div>
       </div>
     </div>
@@ -121,6 +162,7 @@ export default {
       isSkeletorLoading: false,
       color: "pink",
       isLiked: false,
+      showAllComments: false,
     };
   },
   async created() {
@@ -173,6 +215,10 @@ export default {
 
     focusCommentInput() {
       this.$refs.commentTextarea.focus();
+    },
+
+    toggleAllComments() {
+      this.showAllComments = !this.showAllComments;
     },
 
     onFileChange() {
@@ -325,12 +371,12 @@ export default {
 }
 
 .comments {
-  background-color: #f9f9f9;
   margin-top: 1rem;
   margin-left: 2rem;
 }
 
 .comment {
+  background-color: #f9f9f9;
   margin-top: 1rem;
   display: flex;
   flex-direction: row;
@@ -622,5 +668,22 @@ export default {
 .comment-buttons {
   display: flex;
   justify-content: flex-end;
+}
+
+.view-more-btn {
+  background: none;
+  border: none;
+  color: #007bff;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+  transition: color 0.2s ease;
+}
+
+.view-more-btn:hover {
+  color: #0056b3;
+  text-decoration: underline;
 }
 </style>
