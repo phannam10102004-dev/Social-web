@@ -5,17 +5,15 @@
     enctype="multipart/form-data"
     v-if="openAddPost"
   >
-    <h2 class="add-post__title">
-      Add an Image Post
-    </h2>
+    <h2 class="add-post__title">Thêm bài viết</h2>
     <label class="input">
-      <input
-        class="input__field"
-        type="text"
+      <textarea
+        class="input__field input__field--textarea"
         placeholder=" "
         v-model="textDescription"
-      />
-      <span class="input__label">Description</span>
+        rows="4"
+      ></textarea>
+      <span class="input__label">Mô tả (tùy chọn)</span>
     </label>
     <label class="input">
       <input
@@ -26,14 +24,14 @@
         name="file"
         accept="image/*"
       />
-      <span class="input__label">Image</span>
+      <span class="input__label">Hình ảnh (tùy chọn)</span>
     </label>
     <span class="input__label warn" v-if="fillError"
-      >Please fill in all fields</span
+      >Vui lòng điền mô tả hoặc chọn ảnh</span
     >
     <div class="options">
       <button type="submit" id="btn-post" class="btn-add" v-if="!isLoading">
-        Add
+        Thêm
       </button>
       <sync-loader :color="color" v-if="isLoading"></sync-loader>
       <button
@@ -42,76 +40,83 @@
         v-if="!isLoading"
         type="button"
       >
-        Close
+        Đóng
       </button>
     </div>
   </form>
 </template>
 
 <script>
-import axios from 'axios'
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
-import { createToast } from 'mosha-vue-toastify'
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
+import { createToast } from "mosha-vue-toastify";
 
 export default {
-  name: 'AddImagePost',
+  name: "AddImagePost",
   components: {
     SyncLoader,
   },
-  props: ['id'],
+  props: ["id"],
   data() {
     return {
       posts: [],
       user: [],
       file: null,
       isLoading: false,
-      color: 'pink',
+      color: "pink",
       openAddPost: true,
-      textDescription: '',
+      textDescription: "",
       fillError: false,
-      postingSuccess: '',
-    }
+      postingSuccess: "",
+    };
   },
   methods: {
     onFileChange() {
-      const file = this.$refs.file.files[0]
-      this.file = file
+      const file = this.$refs.file.files[0];
+      this.file = file;
     },
     async addImagePost() {
-      if (!this.file || !this.textDescription) {
-        this.fillError = true
+      // Kiểm tra nếu không có cả mô tả và ảnh thì báo lỗi
+      if (!this.textDescription && !this.file) {
+        this.fillError = true;
       } else {
-        this.isLoading = true
-        this.postingSuccess = 'Your post was successfully added!'
+        this.isLoading = true;
+        this.postingSuccess = "Đăng bài viết thành công!";
 
-        const formData = new FormData()
-        formData.append('file', this.file)
+        let formData = null;
+        let fileName = null;
 
-        const post = {
-          description: this.textDescription,
-          isImagePost: true,
-          userId: this.id,
-          file: this.file.name,
+        // Chỉ tạo FormData nếu có file
+        if (this.file) {
+          formData = new FormData();
+          formData.append("file", this.file);
+          fileName = this.file.name;
         }
 
-        this.$store.dispatch('addImagePost', { post, formData })
-        this.$store.dispatch('fetchPosts')
+        const post = {
+          description: this.textDescription || "", // Để trống nếu không có mô tả
+          isImagePost: !!this.file, // true nếu có file, false nếu không
+          userId: this.id,
+          file: fileName, // null nếu không có file
+        };
 
-        this.isLoading = false
-        this.openAddPost = false
+        // Gọi addPost duy nhất với post và formData (có thể null)
+        this.$store.dispatch("addPost", { post, formData });
+        this.$store.dispatch("fetchPosts");
+        this.isLoading = false;
+        this.openAddPost = false;
         createToast(
           {
             title: this.postingSuccess,
           },
           {
-            type: 'success',
+            type: "success",
             showIcon: true,
           }
-        )
+        );
       }
     },
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -209,6 +214,19 @@ export default {
     background: transparent;
     border-radius: var(--size-radius);
     margin-bottom: 1rem;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.4;
+
+    &--textarea {
+      width: 400px;
+      min-height: 120px;
+      max-height: 300px;
+      resize: vertical;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
 
     &:focus,
     &:not(:placeholder-shown) {

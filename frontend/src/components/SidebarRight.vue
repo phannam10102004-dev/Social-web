@@ -1,7 +1,7 @@
 <template>
   <div class="right-sidebar">
     <div class="friends">
-      <h4 class="friends-title">People</h4>
+      <h4 class="friends-title">Bạn bè</h4>
       <Skeletor circle size="50" v-if="isLoading" />
       <Skeletor v-if="isLoading" class="skeleton" width="150" height="20" />
       <Skeletor circle size="50" v-if="isLoading" />
@@ -35,25 +35,37 @@
 </template>
 
 <script>
-import axios from 'axios'
-import { Skeletor } from 'vue-skeletor'
+import { Skeletor } from "vue-skeletor";
 
 export default {
-  name: 'SidebarRight',
+  name: "SidebarRight",
   components: { Skeletor },
   data() {
     return {
       users: [],
       isLoading: false,
-    }
+    };
   },
   async created() {
-    this.isLoading = true
-    const responseUsers = await axios.get('users/')
-    this.users = responseUsers.data
-    this.isLoading = false
+    this.isLoading = true;
+    try {
+      const response = await fetch("http://localhost:3000/api/users/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        this.users = await response.json();
+      }
+    } catch (error) {
+      console.error("Fetch users error:", error);
+    }
+    this.isLoading = false;
   },
-}
+};
 </script>
 
 <style scoped>
@@ -70,6 +82,9 @@ export default {
   z-index: 1;
   top: 0;
   overflow-x: hidden;
+  /* //ẩn cuộn */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE & Edge */
 }
 .friends {
   padding: 1rem;

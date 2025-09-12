@@ -3,7 +3,7 @@
     <TheHeader />
     <div class="home__content">
       <div class="home__left-sidebar">
-        <SidebarLeft />
+        <SidebarLeft :currentUser="currentUser" />
       </div>
       <div class="home__container">
         <PostDetail :id="id" />
@@ -17,16 +17,21 @@
 </template>
 
 <script>
-import SidebarLeft from '@/components/SidebarLeft'
-import SidebarRight from '@/components/SidebarRight'
-import PostDetail from '@/components/PostDetail'
-import TheHeader from '@/components/TheHeader'
-import TheFooter from '@/components/TheFooter'
+import SidebarLeft from "@/components/SidebarLeft";
+import SidebarRight from "@/components/SidebarRight";
+import PostDetail from "@/components/PostDetail";
+import TheHeader from "@/components/TheHeader";
+import TheFooter from "@/components/TheFooter";
 
 export default {
   components: { SidebarLeft, SidebarRight, PostDetail, TheHeader, TheFooter },
-  props: ['id'],
-}
+  props: ["id"],
+  computed: {
+    currentUser() {
+      return this.$store.state.user?._id;
+    },
+  },
+};
 </script>
 
 <style scoped>

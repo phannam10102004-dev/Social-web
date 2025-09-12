@@ -8,29 +8,44 @@
 </template>
 
 <script>
-import axios from 'axios'
-
 export default {
-  name: 'ProfileImage',
-  props: ['id'],
+  name: "ProfileImage",
+  props: ["id"],
   data() {
     return {
       user: [],
-      profilePicture: '',
-    }
+      profilePicture: "",
+    };
   },
   async created() {
-    const responseUser = await axios.get('users/' + this.id)
-    this.user = responseUser.data
-    this.profilePicture = this.user.profilePicture
+    try {
+      const responseUser = await fetch(
+        `http://localhost:3000/api/users/${this.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }
+      );
+
+      if (responseUser.ok) {
+        this.user = await responseUser.json();
+        this.profilePicture = this.user.profilePicture;
+      }
+    } catch (error) {
+      console.error("Fetch user profile image error:", error);
+    }
   },
-}
+};
 </script>
 
 <style scoped>
 .image-post__avatar {
-  width: 54px;
-  height: 54px;
-  border-radius: 35%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 </style>

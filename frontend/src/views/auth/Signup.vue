@@ -1,28 +1,42 @@
 <template>
   <article class="signup">
     <div class="card card--accent">
-      <img class="card__logo" src="../../assets/logo.png" />
-      <h2 class="card__text">
-        Sign Up to Island Social Platform
-      </h2>
+      <div class="logo-row">
+        <img class="card__logo" src="../../assets/logo.png" />
+        <span class="joynet-logo-text">Joynet</span>
+      </div>
+
+      <h2 class="card__text">Đăng ký để tiếp tục</h2>
       <label class="input">
         <input
           class="input__field"
-          type="email"
+          type="text"
           placeholder=" "
           v-model="email"
-          @blur="validateEmail"
+          :class="{
+            'input-error': (fillError && !email) || showEmailError,
+          }"
         />
         <span class="input__label">E-mail</span>
       </label>
-      <label class="input">
+      <label class="input" style="position: relative">
         <input
           class="input__field"
-          type="password"
+          :type="showPassword ? 'text' : 'password'"
           placeholder=" "
           v-model="password"
+          :class="{ 'input-error': fillError && !password }"
         />
-        <span class="input__label">Password</span>
+        <span class="input__label">Mật khẩu</span>
+        <button
+          type="button"
+          class="toggle-password-btn"
+          @click="showPassword = !showPassword"
+          :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+        >
+          <span v-if="showPassword">🙈</span>
+          <span v-else>👁️</span>
+        </button>
       </label>
       <label class="input">
         <input
@@ -30,19 +44,19 @@
           type="text"
           placeholder=" "
           v-model="displayName"
+          :class="{ 'input-error': fillError && !displayName }"
         />
-        <span class="input__label">Display Name</span>
+        <span class="input__label">Tên hiển thị</span>
       </label>
-      <p class="warn" v-if="fillError">
-        Please fill in all fields
+      <p class="warn" v-if="fillError">Vui lòng điền đủ thông tin</p>
+      <p class="warn" v-if="email && !emailError && showEmailError">
+        Vui lòng nhập địa chỉ email hợp lệ
       </p>
-      <p class="warn" v-if="!emailError">
-        Please enter a valid email address
-      </p>
+      <p class="warn" v-if="signupError">{{ signupError }}</p>
       <div class="button-group">
         <div class="button-group-left">
           <div class="signup-button-loader" v-if="!signupLoading">
-            <button @click="signUp">Sign Up</button>
+            <button @click="signUp">Đăng ký</button>
           </div>
           <div class="signup-button-loader" v-else>
             <SyncLoader class="signup-loader" :color="color" />
@@ -50,63 +64,171 @@
         </div>
         <div class="button-group-right">
           <router-link to="/login" v-if="!signupLoading">
-            <button>Already Signed Up?</button></router-link
-          >
+            <button>Bạn đã có tài khoản?</button>
+          </router-link>
         </div>
       </div>
+
+      <!-- Google Signup Divider -->
+      <div class="divider-row">
+        <span class="divider-line"></span>
+        <span class="divider-text">hoặc</span>
+        <span class="divider-line"></span>
+      </div>
+      <!-- Google Signup Button -->
+      <button class="google-login-btn" @click="signUpWithGoogle">
+        <img
+          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+          alt="Google logo"
+          class="google-logo"
+        />
+        Đăng ký bằng Google
+      </button>
     </div>
   </article>
 </template>
 
 <script>
-import axios from 'axios'
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
-  name: 'Signup',
+  name: "Signup",
   components: { SyncLoader },
   data() {
     return {
-      email: '',
-      password: '',
-      displayName: '',
+      email: "",
+      password: "",
+      displayName: "",
       fillError: false,
       emailError: false,
+      showEmailError: false,
       signupLoading: false,
-      color: 'pink',
-    }
+      showPassword: false,
+      signupError: "",
+      color: "pink",
+    };
+  },
+  watch: {
+    email() {
+      this.resetErrors();
+    },
+    password() {
+      this.resetErrors();
+    },
+    displayName() {
+      this.resetErrors();
+    },
   },
   methods: {
+    resetErrors() {
+      this.signupError = "";
+      this.fillError = false;
+      this.emailError = false;
+      this.showEmailError = false;
+    },
+    signUpWithGoogle() {
+      alert("Chức năng đăng ký bằng Google sẽ được cập nhật!");
+    },
     validateEmail() {
-      if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email)) {
-        this.emailError = true
-      } else {
-        this.emailError = false
-      }
+      return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email);
     },
     async signUp() {
-      this.signupLoading = true
-      if (!this.email || !this.password || !this.displayName) {
-        this.fillError = true
-        this.signupLoading = false
-      } else {
-        this.fillError = false
+      // Reset states
+      this.signupLoading = true;
+      this.signupError = "";
+      this.fillError = false;
+      this.showEmailError = false;
 
-        const response = await axios.post('auth/register', {
+      // Validate inputs
+      if (!this.email || !this.password || !this.displayName) {
+        this.fillError = true;
+        this.signupLoading = false;
+        return;
+      }
+
+      if (!this.validateEmail()) {
+        this.showEmailError = true;
+        this.signupLoading = false;
+        return;
+      }
+
+      try {
+        console.log(
+          "Sending request with fetch to: http://localhost:3000/api/auth/register"
+        );
+        console.log("Request data:", {
           email: this.email,
           password: this.password,
           displayName: this.displayName,
-        })
-        try {
-          await this.$router.push('/login')
-        } catch (err) {
-          console.log(err)
+        });
+
+        const response = await fetch(
+          "http://localhost:3000/api/auth/register",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              email: this.email,
+              password: this.password,
+              displayName: this.displayName,
+            }),
+          }
+        );
+
+        console.log("Response status:", response.status);
+        console.log("Response ok:", response.ok);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Đăng ký thành công:", data);
+
+          // Reset form
+          this.email = "";
+          this.password = "";
+          this.displayName = "";
+
+          // Chuyển trang
+          await this.$router.push("/login");
+        } else {
+          // Có lỗi (status 400, 500, etc.)
+          let errorData = {};
+          try {
+            errorData = await response.json();
+            console.log("Error data from server:", errorData);
+          } catch (e) {
+            console.log("Cannot parse error response as JSON");
+          }
+
+          if (response.status === 400) {
+            this.signupError =
+              errorData.error || errorData.message || "Email đã được sử dụng.";
+            console.log("Set error 400:", this.signupError);
+          } else if (response.status === 500) {
+            this.signupError = "Lỗi server. Vui lòng thử lại sau.";
+          } else if (response.status === 422) {
+            this.signupError =
+              errorData.error || errorData.message || "Dữ liệu không hợp lệ.";
+          } else {
+            this.signupError =
+              errorData.error ||
+              errorData.message ||
+              "Đăng ký thất bại. Vui lòng thử lại.";
+          }
         }
-        this.signupLoading = false
+      } catch (error) {
+        console.log("Network error:", error);
+        this.signupError =
+          "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
+      } finally {
+        this.signupLoading = false;
+        console.log("Final signupError:", this.signupError);
       }
     },
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -131,7 +253,8 @@ export default {
   }
 
   &__logo {
-    width: 150px;
+    width: 60px;
+    height: 60px;
     margin-bottom: 1rem;
   }
 
@@ -146,7 +269,7 @@ export default {
 
 .signup {
   max-width: 40rem;
-  padding: 1rem;
+  padding: 3rem;
   margin-left: auto;
   margin-right: auto;
 }
@@ -164,8 +287,8 @@ export default {
     transform: translate(0, 0);
     transform-origin: 0 0;
     transition: transform 120ms ease-in;
-    font-weight: bold;
     line-height: 1.2;
+    color: gray;
   }
   &__field {
     box-sizing: border-box;
@@ -178,16 +301,39 @@ export default {
     border-radius: var(--size-radius);
     margin-bottom: 1rem;
 
+    &:-webkit-autofill,
     &:focus,
     &:not(:placeholder-shown) {
       & + .input__label {
         transform: translate(0.25rem, -65%) scale(0.8);
         color: var(--pink);
+        background: var(--white);
+        padding: 0 0.3em;
+        z-index: 2;
       }
+    }
+
+    // Xử lý màu nền khi autofill
+    &:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 30px white inset !important;
+      -webkit-text-fill-color: currentColor !important;
     }
   }
 }
-
+// Nút hiện/ẩn mật khẩu
+.toggle-password-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 0.25em;
+  color: var(--txt-darkest);
+  z-index: 3;
+}
 .button-group {
   margin-top: calc(var(--size-bezel) * 2.5);
   display: flex;
@@ -201,6 +347,8 @@ button {
   border: none;
   border-radius: var(--size-radius);
   font-weight: 900;
+  font-family: "Roboto", "Arial", "Helvetica Neue", "Segoe UI", "Tahoma",
+    "Geneva", "Verdana", "sans-serif";
 }
 
 button + button {
@@ -220,5 +368,68 @@ button + button {
 
 .warn {
   color: var(--red);
+}
+// Logo và chữ Joynet trên một dòng, căn giữa đẹp
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.joynet-logo-text {
+  font-family: "Montserrat", "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
+  font-weight: 900;
+  font-size: 2rem;
+  background: linear-gradient(90deg, #fe7b77 0%, #fea94f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 2px 2px 8px rgba(254, 123, 119, 0.1),
+    0 2px 8px rgba(254, 169, 79, 0.1);
+  display: inline-block;
+}
+// Hiệu ứng border đỏ khi input lỗi
+.input-error {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 2px rgba(254, 123, 119, 0.15);
+}
+/* Google Signup Styles */
+.divider-row {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0 1rem 0;
+}
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+.divider-text {
+  margin: 0 1rem;
+  color: #888;
+  font-size: 0.95rem;
+}
+.google-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.7rem 0;
+  background: #fff;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #444;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  margin-bottom: 1.2rem;
+}
+.google-login-btn:hover {
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.15);
+}
+.google-logo {
+  width: 22px;
+  height: 22px;
 }
 </style>

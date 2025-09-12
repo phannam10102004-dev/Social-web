@@ -3,27 +3,29 @@
     <TheHeader />
     <div class="profile__content">
       <div class="profile__left-sidebar">
-        <SidebarLeft />
+        <SidebarLeft :currentUser="currentUser" />
       </div>
       <div class="profile__container">
         <ProfileDetail :id="id" />
       </div>
-      <div class="profile__right-sidebar"></div>
+      <div class="profile__right-sidebar">
+        <SidebarRight :currentUser="currentUser" />
+      </div>
     </div>
     <TheFooter />
   </div>
 </template>
 
 <script>
-import SidebarLeft from '@/components/SidebarLeft'
-import SidebarRight from '@/components/SidebarRight'
-import TheHeader from '@/components/TheHeader'
-import ProfileDetail from '@/components/ProfileDetail'
-import TheFooter from '@/components/TheFooter'
+import SidebarLeft from "@/components/SidebarLeft";
+import SidebarRight from "@/components/SidebarRight";
+import TheHeader from "@/components/TheHeader";
+import ProfileDetail from "@/components/ProfileDetail";
+import TheFooter from "@/components/TheFooter";
 
 export default {
-  name: 'Profile',
-  props: ['id'],
+  name: "Profile",
+  props: ["id"],
   components: {
     SidebarLeft,
     SidebarRight,
@@ -31,7 +33,26 @@ export default {
     ProfileDetail,
     TheFooter,
   },
-}
+  computed: {
+    currentUser() {
+      return this.$store.state.user?._id;
+    },
+  },
+  watch: {
+    // Khi route params thay đổi (chuyển từ profile này sang profile khác)
+    "$route.params.id": {
+      handler(newId, oldId) {
+        if (newId !== oldId) {
+          // Force re-render component khi ID thay đổi
+          this.$nextTick(() => {
+            this.$forceUpdate();
+          });
+        }
+      },
+      immediate: true,
+    },
+  },
+};
 </script>
 
 <style scoped>

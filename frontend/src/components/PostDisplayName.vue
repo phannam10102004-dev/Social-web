@@ -7,23 +7,37 @@
 </template>
 
 <script>
-import axios from 'axios'
-
 export default {
-  name: 'PostDisplayName',
-  props: ['id'],
+  name: "PostDisplayName",
+  props: ["id"],
   data() {
     return {
       user: [],
-      displayName: '',
-    }
+      displayName: "",
+    };
   },
   async created() {
-    const responseUser = await axios.get('users/' + this.id)
-    this.user = responseUser.data
-    this.displayName = this.user.displayName
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/users/${this.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        this.user = await response.json();
+        this.displayName = this.user.displayName;
+      }
+    } catch (error) {
+      console.error("Fetch user error:", error);
+    }
   },
-}
+};
 </script>
 
 <style scoped>
