@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 const PostSchema = new mongoose.Schema(
   {
@@ -9,22 +9,36 @@ const PostSchema = new mongoose.Schema(
     description: {
       type: String,
       max: 500,
-      default: '',
+      default: "",
     },
     displayName: {
       type: String,
-      default: '',
+      default: "",
     },
     file: {
       type: String,
-      default: '',
+      default: "",
     },
     comments: {
       type: Array,
       default: [],
     },
+    likes: {
+      type: Array,
+      default: [],
+    },
+    likesCount: {
+      type: Number,
+      default: 0,
+    },
   },
-  { timestamps: true }
-)
+  {
+    timestamps: {
+      createdAt: "createdAt",
+      updatedAt: "updatedAt",
+      currentTime: () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000), // UTC+7 (Vietnam time)
+    },
+  }
+);
 
-module.exports = mongoose.model('Post', PostSchema)
+module.exports = mongoose.model("Post", PostSchema);

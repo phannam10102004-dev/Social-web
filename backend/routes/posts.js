@@ -1,64 +1,58 @@
-const router = require('express').Router()
-const Post = require('../models/Post.js')
-const User = require('../models/User.js')
-const Comment = require('../models/Comment.js')
-const mongoSanitize = require('express-mongo-sanitize')
-const sanitize = require('mongo-sanitize')
+const router = require("express").Router();
+const Post = require("../models/Post.js");
+const User = require("../models/User.js");
+const Comment = require("../models/Comment.js");
+const mongoSanitize = require("express-mongo-sanitize");
+const sanitize = require("mongo-sanitize");
 
-//CREATE POST
-router.post('/', async (req, res) => {
+// Tạo post mới với description, isTextPost, isImagePost, userId, file
+router.post("/", async (req, res) => {
+  const sanitizedDesc = sanitize(req.sanitize(req.body.description));
+  const sanitizedisText = sanitize(req.sanitize(req.body.isTextPost));
+  const sanitizedisImage = sanitize(req.sanitize(req.body.isImagePost));
+  const sanitizedUserId = sanitize(req.sanitize(req.body.userId));
+  const sanitizedFile = sanitize(req.sanitize(req.body.file));
+
+  const newPost = await new Post({
+    description: sanitizedDesc,
+    isTextPost: sanitizedisText,
+    isImagePost: sanitizedisImage,
+    userId: sanitizedUserId,
+    file: sanitizedFile,
+  });
+
   try {
-    const sanitizedDesc = sanitize(req.sanitize(req.body.description))
-    const sanitizedUserId = sanitize(req.sanitize(req.body.userId))
-    const sanitizedFile = sanitize(req.sanitize(req.body.file))
-
-    const newPost = new Post({
-      description: sanitizedDesc,
-      userId: sanitizedUserId,
-      file: sanitizedFile
-    })
-
-    const createPost = await newPost.save()
-    return res.status(200).json(createPost)
+    const createPost = await newPost.save();
+    return res.status(200).json({ createPost });
   } catch (err) {
-    return res.status(500).json(err)
+    return res.status(500).json(err);
   }
-})
+});
 
-//UPLOAD
-router.post('/upload', (req, res) => {
-  if (!req.files || !req.files.file) {
-    return res.status(400).json({ error: "Không tìm thấy file" });
-  }
-  
+// Upload ảnh cho bài viết vào thư mục uploads/
+router.post("/upload", (req, res) => {
   const file = req.files.file;
-  
-  // Tạo tên file an toàn (tránh trùng lặp)
-  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-  const filename = uniqueSuffix + '-' + file.name;
-  
-  file.mv('uploads/' + filename, function (err) {
+  file.mv("uploads/" + file.name, function (err) {
     if (err) {
       console.log(err);
-      return res.status(500).json({ error: "Lỗi khi upload file" });
     } else {
-      console.log('uploaded');
-      return res.json({ file: filename });
+      console.log("uploaded");
     }
   });
-})
+  return res.json({ file: req.body.file });
+});
 
 //COMMENT POST
-router.put('/:id/comment', async (req, res) => {
+router.put("/:id/comment", async (req, res) => {
   try {
-    const sanitizedUserId = sanitize(req.sanitize(req.body.userId))
-    const sanitizedPostId = sanitize(req.sanitize(req.params.id))
-    const sanitizedComment = sanitize(req.sanitize(req.body.comment))
-    const sanitizedDisplayName = sanitize(req.sanitize(req.body.displayName))
-    const sanitizedFile = sanitize(req.sanitize(req.body.file))
-    const sanitizedisText = sanitize(req.sanitize(req.body.isTextComment))
+    const sanitizedUserId = sanitize(req.sanitize(req.body.userId));
+    const sanitizedPostId = sanitize(req.sanitize(req.params.id));
+    const sanitizedComment = sanitize(req.sanitize(req.body.comment));
+    const sanitizedDisplayName = sanitize(req.sanitize(req.body.displayName));
+    const sanitizedFile = sanitize(req.sanitize(req.body.file));
+    const sanitizedisText = sanitize(req.sanitize(req.body.isTextComment));
 
-    const post = await Post.findById(req.params.id)
+    const post = await Post.findById(req.params.id);
 
     const comment = await new Comment({
       userId: sanitizedUserId,
@@ -67,61 +61,181 @@ router.put('/:id/comment', async (req, res) => {
       isTextComment: sanitizedisText,
       displayName: sanitizedDisplayName,
       file: sanitizedFile,
-    })
-    await post.updateOne({ $push: { comments: req.body } })
-    const addComment = await comment.save()
-    return res.status(200).json(addComment)
+    });
+    await post.updateOne({ $push: { comments: req.body } });
+    const addComment = await comment.save();
+    return res.status(200).json(addComment);
   } catch (err) {
-    return res.status(500).json(err)
+    return res.status(500).json(err);
   }
-})
+});
 
 //GET POSTS COMMENTS
-router.get('/:id/comments', async (req, res) => {
+router.get("/:id/comments", async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id)
-    const comment = await Comment.find({ postId: post._id })
-    return res.status(200).json(comment)
+    const post = await Post.findById(req.params.id);
+    const comment = await Comment.find({ postId: post._id });
+    return res.status(200).json(comment);
   } catch (err) {
-    return res.status(500).json(err)
+    return res.status(500).json(err);
   }
-})
+});
 
 //GET A POST
-router.get('/:id', async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id)
-    return res.status(200).json(post)
+    const post = await Post.findById(req.params.id);
+    return res.status(200).json(post);
   } catch (err) {
-    return res.status(500).json(err)
+    return res.status(500).json(err);
   }
-})
+});
 
 //GET FRIENDS POSTS
-router.get('/timeline/:userId', async (req, res) => {
+router.get("/timeline/:userId", async (req, res) => {
   try {
-    const currentUser = await User.findById(req.params.userId)
-    const userPosts = await Post.find({ userId: currentUser._id })
+    const currentUser = await User.findById(req.params.userId);
+    const userPosts = await Post.find({ userId: currentUser._id });
     const friendPosts = await Promise.all(
       currentUser.followings.map((friendId) => {
-        return Post.find({ userId: friendId })
+        return Post.find({ userId: friendId });
       })
-    )
-    return res.json(userPosts.concat(...friendPosts))
+    );
+    return res.json(userPosts.concat(...friendPosts));
   } catch (err) {
-    return res.status(500).json(err)
+    return res.status(500).json(err);
   }
-})
+});
 
 //GET USER'S POSTS
-router.get('/:userId/posts', async (req, res) => {
+router.get("/:userId/posts", async (req, res) => {
   try {
-    const currentUser = await User.findById(req.params.userId)
-    const userPosts = await Post.find({ userId: currentUser._id })
+    const currentUser = await User.findById(req.params.userId);
+    const userPosts = await Post.find({ userId: currentUser._id });
 
-    return res.status(200).json(userPosts)
+    return res.status(200).json(userPosts);
   } catch (err) {
-    return res.status(500).json(err)
+    return res.status(500).json(err);
   }
-})
-module.exports = router
+});
+
+// LIKE/UNLIKE POST
+router.put("/:id/like", async (req, res) => {
+  try {
+    const sanitizedPostId = sanitize(req.sanitize(req.params.id));
+    const sanitizedUserId = sanitize(req.sanitize(req.body.userId));
+
+    const post = await Post.findById(sanitizedPostId);
+
+    if (!post) {
+      return res.status(404).json({ error: "Bài viết không tồn tại" });
+    }
+
+    // Kiểm tra xem user đã like chưa
+    const isLiked = post.likes.includes(sanitizedUserId);
+
+    if (isLiked) {
+      // Nếu đã like thì unlike (bỏ thích)
+      post.likes = post.likes.filter((id) => id !== sanitizedUserId);
+      post.likesCount = Math.max(0, post.likesCount - 1);
+      await post.save();
+
+      return res.status(200).json({
+        message: "Đã bỏ thích bài viết",
+        isLiked: false,
+        likesCount: post.likesCount,
+      });
+    } else {
+      // Nếu chưa like thì like (thích)
+      post.likes.push(sanitizedUserId);
+      post.likesCount += 1;
+      await post.save();
+
+      return res.status(200).json({
+        message: "Đã thích bài viết",
+        isLiked: true,
+        likesCount: post.likesCount,
+      });
+    }
+  } catch (err) {
+    console.error("Like/Unlike error:", err);
+    return res.status(500).json({ error: "Lỗi server khi xử lý like" });
+  }
+});
+
+// GET LIKES OF A POST
+router.get("/:id/likes", async (req, res) => {
+  try {
+    const sanitizedPostId = sanitize(req.sanitize(req.params.id));
+
+    const post = await Post.findById(sanitizedPostId);
+
+    if (!post) {
+      return res.status(404).json({ error: "Bài viết không tồn tại" });
+    }
+
+    // Lấy thông tin chi tiết của những người đã like
+    const likedUsers = await User.find({ _id: { $in: post.likes } }).select(
+      "_id displayName email"
+    ); // Chỉ lấy thông tin cần thiết
+
+    return res.status(200).json({
+      likesCount: post.likesCount,
+      likedUsers: likedUsers,
+    });
+  } catch (err) {
+    console.error("Get likes error:", err);
+    return res
+      .status(500)
+      .json({ error: "Lỗi server khi lấy danh sách likes" });
+  }
+});
+
+// GET LIKES COUNT ONLY (Chỉ lấy số lượng lượt thích)
+router.get("/:id/likes-count", async (req, res) => {
+  try {
+    const sanitizedPostId = sanitize(req.sanitize(req.params.id));
+    
+    const post = await Post.findById(sanitizedPostId);
+    
+    if (!post) {
+      return res.status(404).json({ error: "Bài viết không tồn tại" });
+    }
+
+    return res.status(200).json({
+      postId: post._id,
+      likesCount: post.likesCount,
+    });
+  } catch (err) {
+    console.error("Get likes count error:", err);
+    return res.status(500).json({ error: "Lỗi server khi lấy số lượng likes" });
+  }
+});
+
+// CHECK IF USER LIKED POST (Kiểm tra user đã thích bài viết chưa)
+router.get("/:id/like-status/:userId", async (req, res) => {
+  try {
+    const sanitizedPostId = sanitize(req.sanitize(req.params.id));
+    const sanitizedUserId = sanitize(req.sanitize(req.params.userId));
+    
+    const post = await Post.findById(sanitizedPostId);
+    
+    if (!post) {
+      return res.status(404).json({ error: "Bài viết không tồn tại" });
+    }
+
+    const isLiked = post.likes.includes(sanitizedUserId);
+
+    return res.status(200).json({
+      postId: post._id,
+      userId: sanitizedUserId,
+      isLiked: isLiked,
+      likesCount: post.likesCount,
+    });
+  } catch (err) {
+    console.error("Check like status error:", err);
+    return res.status(500).json({ error: "Lỗi server khi kiểm tra trạng thái like" });
+  }
+});
+
+module.exports = router;
