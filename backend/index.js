@@ -3,9 +3,12 @@ const app = express()
 const http = require('http')
 const server = http.createServer(app)
 const { Server } = require("socket.io")
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ["http://localhost:8080"]
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:8080",
+    origin: allowedOrigins,
     credentials: true
   }
 })
@@ -55,9 +58,12 @@ app.use(helmet({
   }
 }))
 app.use(morgan('common'))
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',') 
+  : ['http://localhost:8080']
 app.use(cors({ 
   credentials: true, 
-  origin: 'http://localhost:8080',
+  origin: corsOrigins,
   optionsSuccessStatus: 200
 }))
 app.use(fileupload())
@@ -86,6 +92,7 @@ app.use('/api/follow-requests', followRequestRoute)
 // WebSocket Authentication & Events
 require('./socket/socketHandler')(io)
 
-server.listen(3000, () => {
-  console.log('backend server is running!')
+const PORT = process.env.PORT || 3000
+server.listen(PORT, () => {
+  console.log(`backend server is running on port ${PORT}!`)
 })
