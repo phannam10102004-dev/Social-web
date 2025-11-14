@@ -6,7 +6,7 @@
           <img
             v-if="user.profilePicture"
             class="image-post__img"
-            :src="`http://localhost:3000/uploads/user/${user.profilePicture}`"
+            :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
           />
           <img
             v-else
@@ -19,7 +19,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Teleport modal ra ngoài body -->
     <Teleport to="body">
       <AddPost v-if="showAddImagePost" @close="toggleAddImagePost" />
@@ -33,7 +33,7 @@ import AddPost from "@/components/AddPost.vue";
 export default {
   name: "Post",
   components: {
-  AddPost,
+    AddPost,
   },
   data() {
     return {
@@ -63,12 +63,14 @@ export default {
   border-radius: var(--radius-2xl);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .post:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   transform: translateY(-2px);
   border-color: rgba(102, 126, 234, 0.2);
 }
@@ -111,13 +113,17 @@ export default {
 }
 
 .post-input::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
 }

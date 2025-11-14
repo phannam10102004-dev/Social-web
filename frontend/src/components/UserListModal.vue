@@ -13,21 +13,17 @@
           Không có người dùng nào
         </div>
         <div v-else class="user-list">
-          <div 
-            v-for="user in users" 
-            :key="user._id" 
-            class="user-item"
-          >
+          <div v-for="user in users" :key="user._id" class="user-item">
             <div class="user-info" @click="navigateToProfile(user._id)">
               <div class="user-avatar">
-                <img 
-                  v-if="user.profilePicture" 
-                  :src="`http://localhost:3000/uploads/user/${user.profilePicture}`" 
+                <img
+                  v-if="user.profilePicture"
+                  :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
                   alt="Avatar"
                 />
-                <img 
-                  v-else 
-                  src="@/assets/defaultProfile.png" 
+                <img
+                  v-else
+                  src="@/assets/defaultProfile.png"
                   alt="Default Avatar"
                 />
               </div>
@@ -36,14 +32,17 @@
                 <div class="user-email">{{ user.email }}</div>
               </div>
             </div>
-            <button 
+            <button
               v-if="currentUserId !== user._id && showFollowButtons"
-              :class="['follow-button', isFollowing(user._id) ? 'following' : '']"
+              :class="[
+                'follow-button',
+                isFollowing(user._id) ? 'following' : '',
+              ]"
               @click="toggleFollow(user._id)"
               :disabled="followingStatus[user._id]?.loading"
             >
               <span v-if="!followingStatus[user._id]?.loading">
-                {{ isFollowing(user._id) ? 'Bỏ theo dõi' : 'Theo dõi' }}
+                {{ isFollowing(user._id) ? "Bỏ theo dõi" : "Theo dõi" }}
               </span>
               <span v-else class="mini-loader">
                 <SyncLoader :color="color" :size="'5px'" />
@@ -57,26 +56,26 @@
 </template>
 
 <script>
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue';
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
-  name: 'UserListModal',
+  name: "UserListModal",
   components: {
-    SyncLoader
+    SyncLoader,
   },
   props: {
     title: {
       type: String,
-      required: true
+      required: true,
     },
     userIds: {
       type: Array,
-      required: true
+      required: true,
     },
     showFollowButtons: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   },
   data() {
     return {
@@ -84,7 +83,7 @@ export default {
       loading: true,
       color: "pink",
       followingStatus: {},
-      currentUserId: null
+      currentUserId: null,
     };
   },
   async created() {
@@ -107,47 +106,52 @@ export default {
         this.currentUserId = this.$store.state.user?._id;
 
         // Sử dụng getUser API cho từng userId
-        const { getUser } = await import('@/api/users');
-        
+        const { getUser } = await import("@/api/users");
+
         // Thực hiện các request song song
-        const promises = this.userIds.map(id => getUser(id));
+        const promises = this.userIds.map((id) => getUser(id));
         const responses = await Promise.all(promises);
-        
+
         // Xử lý kết quả và lọc các response thành công
         this.users = responses
-          .filter(res => res.status === 200)
-          .map(res => res.data);
-        
+          .filter((res) => res.status === 200)
+          .map((res) => res.data);
+
         // Khởi tạo trạng thái follow cho mỗi user
-        this.users.forEach(user => {
+        this.users.forEach((user) => {
           const isFollowing = this.checkIfFollowing(user);
-          console.log(`User ${user.displayName} (${user._id}): following = ${isFollowing}`);
-          
+          console.log(
+            `User ${user.displayName} (${user._id}): following = ${isFollowing}`
+          );
+
           // Trong Vue 3 không cần $set, gán trực tiếp
           this.followingStatus[user._id] = {
             following: isFollowing,
-            loading: false
+            loading: false,
           };
         });
       } catch (error) {
-        console.error('Error loading users:', error);
+        console.error("Error loading users:", error);
       } finally {
         this.loading = false;
       }
     },
-    
+
     checkIfFollowing(user) {
       // Lấy thông tin người dùng hiện tại từ store
       const currentUser = this.$store.state.user;
-      
+
       // Nếu là người dùng hiện tại, không hiển thị nút theo dõi
       if (user._id === this.currentUserId) return false;
-      
+
       // Kiểm tra đối với danh sách người theo dõi
       if (this.title === "Người theo dõi") {
         // Kiểm tra xem mình có theo dõi lại người này không
-        const iAmFollowing = currentUser?.followings?.includes(user._id) || false;
-        console.log(`Checking if I'm following ${user.displayName}: ${iAmFollowing}`);
+        const iAmFollowing =
+          currentUser?.followings?.includes(user._id) || false;
+        console.log(
+          `Checking if I'm following ${user.displayName}: ${iAmFollowing}`
+        );
         return iAmFollowing;
       }
       // Kiểm tra đối với danh sách đang theo dõi
@@ -155,75 +159,74 @@ export default {
         // Những người trong danh sách "Đang theo dõi" đã được mình theo dõi rồi
         return true;
       }
-      
+
       // Mặc định kiểm tra người dùng hiện tại có theo dõi người này không
       return currentUser?.followings?.includes(user._id) || false;
     },
-    
+
     isFollowing(userId) {
       return this.followingStatus[userId]?.following || false;
     },
-    
+
     async toggleFollow(userId) {
       if (this.followingStatus[userId].loading) return;
-      
+
       // Set loading state - gán trực tiếp thay vì dùng $set
       this.followingStatus[userId] = {
         ...this.followingStatus[userId],
-        loading: true
+        loading: true,
       };
-      
+
       try {
         const isFollowing = this.followingStatus[userId].following;
-        const { followUser, unfollowUser } = await import('@/api/users');
-        
+        const { followUser, unfollowUser } = await import("@/api/users");
+
         if (isFollowing) {
           // Bỏ theo dõi
           await unfollowUser(userId, this.currentUserId);
-          
+
           // Cập nhật state trong store thông qua action
-          await this.$store.dispatch("updateUserFollowing", { 
-            action: "unfollow", 
-            targetUserId: userId 
+          await this.$store.dispatch("updateUserFollowing", {
+            action: "unfollow",
+            targetUserId: userId,
           });
         } else {
           // Theo dõi
           await followUser(userId, this.currentUserId);
-          
+
           // Cập nhật state trong store thông qua action
-          await this.$store.dispatch("updateUserFollowing", { 
-            action: "follow", 
-            targetUserId: userId 
+          await this.$store.dispatch("updateUserFollowing", {
+            action: "follow",
+            targetUserId: userId,
           });
         }
-        
+
         // Toggle following state - gán trực tiếp thay vì dùng $set
         this.followingStatus[userId] = {
           following: !isFollowing,
-          loading: false
+          loading: false,
         };
-        
+
         // Emit event so parent component can update counts
-        this.$emit('follow-updated', {
+        this.$emit("follow-updated", {
           userId,
-          following: !isFollowing
+          following: !isFollowing,
         });
-        
       } catch (error) {
-        console.error('Error toggling follow:', error);
+        console.error("Error toggling follow:", error);
         // Reset loading state on error - gán trực tiếp thay vì dùng $set
         this.followingStatus[userId] = {
           ...this.followingStatus[userId],
-          loading: false
+          loading: false,
         };
       }
     },
-    
+
     navigateToProfile(userId) {
-      this.$emit('close');
-      this.$router.push({ name: 'Profile', params: { id: userId } });
-    }
-  }
+      this.$emit("close");
+      this.$router.push({ name: "Profile", params: { id: userId } });
+    },
+  },
 };
 </script>
 
@@ -251,8 +254,8 @@ export default {
   background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 
-              0 0 0 1px rgba(226, 232, 240, 0.6);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(226, 232, 240, 0.6);
   animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -262,7 +265,11 @@ export default {
   align-items: center;
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
 }
 
 .modal-header h3 {
@@ -275,7 +282,7 @@ export default {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .close-button {
@@ -339,7 +346,11 @@ export default {
 }
 
 .user-item:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.02) 0%, rgba(118, 75, 162, 0.02) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.02) 0%,
+    rgba(118, 75, 162, 0.02) 100%
+  );
 }
 
 .user-item:last-child {
@@ -481,19 +492,19 @@ export default {
     max-width: 100%;
     border-radius: 12px;
   }
-  
+
   .modal-header {
     padding: 1rem 1.25rem;
   }
-  
+
   .modal-header h3 {
     font-size: 1.125rem;
   }
-  
+
   .user-item {
     padding: 0.75rem 1rem;
   }
-  
+
   .follow-button {
     min-width: 80px;
     font-size: 0.75rem;

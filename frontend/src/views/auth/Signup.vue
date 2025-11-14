@@ -133,19 +133,21 @@ export default {
     async signUpWithGoogle() {
       try {
         this.signupLoading = true;
-        this.signupError = '';
-        
+        this.signupError = "";
+
         // Sử dụng redirect flow như Login (vì đăng ký và đăng nhập Google về bản chất là giống nhau)
-        const clientId = '749220537519-beauagaft0dmdc9uf2ije8fo0mrdc9jd.apps.googleusercontent.com';
-        const redirectUri = 'http://localhost:3000/api/auth/google/callback';
-        const scope = 'openid email profile';
-        
+        const clientId =
+          "749220537519-beauagaft0dmdc9uf2ije8fo0mrdc9jd.apps.googleusercontent.com";
+        const redirectUri = `${this.$uploadBaseUrl}/api/auth/google/callback`;
+        const scope = "openid email profile";
+
         // Tạo nonce để bảo vệ CSRF
         const nonce = this.generateSecureNonce();
-        localStorage.setItem('google_auth_nonce', nonce);
-        
+        localStorage.setItem("google_auth_nonce", nonce);
+
         // Tạo Google OAuth URL
-        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        const googleAuthUrl =
+          `https://accounts.google.com/o/oauth2/v2/auth?` +
           `client_id=${clientId}` +
           `&redirect_uri=${encodeURIComponent(redirectUri)}` +
           `&response_type=code` +
@@ -153,95 +155,116 @@ export default {
           `&state=${nonce}` +
           `&access_type=offline` +
           `&prompt=consent`;
-        
-        console.log('Redirecting to Google OAuth for signup');
-        
+
+        console.log("Redirecting to Google OAuth for signup");
+
         // Redirect đến Google OAuth
         window.location.href = googleAuthUrl;
-        
       } catch (error) {
-        console.error('Google signup error:', error);
-        this.signupError = 'Đăng ký Google thất bại. Vui lòng thử lại.';
+        console.error("Google signup error:", error);
+        this.signupError = "Đăng ký Google thất bại. Vui lòng thử lại.";
         this.signupLoading = false;
       }
     },
-    
+
     // Tạo nonce an toàn để ngăn chặn CSRF
     generateSecureNonce() {
       const array = new Uint32Array(4);
       window.crypto.getRandomValues(array);
-      return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
+      return Array.from(array, (dec) =>
+        ("0" + dec.toString(16)).substr(-2)
+      ).join("");
     },
-    
+
     // Xử lý Google OAuth callback
     handleGoogleCallback() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        const success = urlParams.get('success');
-        const error = urlParams.get('error');
-        
+        const token = urlParams.get("token");
+        const success = urlParams.get("success");
+        const error = urlParams.get("error");
+
         // Log thông tin để debug
         if (success || error || token) {
-          console.log('Google signup callback received:', { 
-            success, 
-            error, 
+          console.log("Google signup callback received:", {
+            success,
+            error,
             hasToken: !!token,
-            url: window.location.href
+            url: window.location.href,
           });
         }
-        
+
         // Kiểm tra nonce nếu có state
-        const state = urlParams.get('state');
-        const storedNonce = localStorage.getItem('google_auth_nonce');
+        const state = urlParams.get("state");
+        const storedNonce = localStorage.getItem("google_auth_nonce");
         if (state && storedNonce && state !== storedNonce) {
-          console.error('Security warning: OAuth state/nonce mismatch');
-          this.signupError = 'Lỗi bảo mật: Phiên xác thực không hợp lệ';
-          localStorage.removeItem('google_auth_nonce');
-          window.history.replaceState({}, document.title, window.location.pathname);
+          console.error("Security warning: OAuth state/nonce mismatch");
+          this.signupError = "Lỗi bảo mật: Phiên xác thực không hợp lệ";
+          localStorage.removeItem("google_auth_nonce");
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
           return;
         }
-        
+
         // Xóa nonce sau khi sử dụng
         if (storedNonce) {
-          localStorage.removeItem('google_auth_nonce');
+          localStorage.removeItem("google_auth_nonce");
         }
-        
-        if (token && success === 'google_login') {
+
+        if (token && success === "google_login") {
           // Kiểm tra token hợp lệ
-          if (!token || typeof token !== 'string' || token.length < 20) {
-            console.error('Invalid token format received');
-            this.signupError = 'Lỗi xác thực: Token không hợp lệ';
-            window.history.replaceState({}, document.title, window.location.pathname);
+          if (!token || typeof token !== "string" || token.length < 20) {
+            console.error("Invalid token format received");
+            this.signupError = "Lỗi xác thực: Token không hợp lệ";
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname
+            );
             return;
           }
-          
+
           // Lưu token và chuyển hướng
           localStorage.setItem("token", token);
-          console.log('Google signup successful - token saved');
-          
+          console.log("Google signup successful - token saved");
+
           // Clear URL params
-          window.history.replaceState({}, document.title, window.location.pathname);
-          
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+
           // Redirect to home
           setTimeout(() => {
             this.$router.push("/home");
           }, 50);
         } else if (error) {
           // Xử lý lỗi
-          if (error === 'google_auth_failed') {
-            this.signupError = 'Đăng ký Google thất bại. Vui lòng thử lại.';
+          if (error === "google_auth_failed") {
+            this.signupError = "Đăng ký Google thất bại. Vui lòng thử lại.";
           } else {
             this.signupError = `Lỗi xác thực: ${error}`;
           }
-          
-          console.warn('Google signup error:', error);
-          window.history.replaceState({}, document.title, window.location.pathname);
+
+          console.warn("Google signup error:", error);
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
         }
       } catch (e) {
-        console.error('Error processing Google signup callback:', e);
-        this.signupError = 'Lỗi xử lý phản hồi từ Google. Vui lòng thử lại.';
-        window.history.replaceState({}, document.title, window.location.pathname);
+        console.error("Error processing Google signup callback:", e);
+        this.signupError = "Lỗi xử lý phản hồi từ Google. Vui lòng thử lại.";
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
       }
     },
     validateEmail() {
@@ -267,15 +290,19 @@ export default {
         return;
       }
 
-      const axios = (await import('@/utils/axios')).default;
+      const axios = (await import("@/utils/axios")).default;
       try {
-        const response = await axios.post('/auth/register', {
-          email: this.email,
-          password: this.password,
-          displayName: this.displayName,
-        }, {
-          withCredentials: true,
-        });
+        const response = await axios.post(
+          "/auth/register",
+          {
+            email: this.email,
+            password: this.password,
+            displayName: this.displayName,
+          },
+          {
+            withCredentials: true,
+          }
+        );
         // Reset form
         this.email = "";
         this.password = "";
@@ -283,15 +310,26 @@ export default {
         await this.$router.push("/login");
       } catch (error) {
         if (error.response && error.response.status === 400) {
-          this.signupError = error.response.data.error || error.response.data.message || "Email đã được sử dụng.";
+          this.signupError =
+            error.response.data.error ||
+            error.response.data.message ||
+            "Email đã được sử dụng.";
         } else if (error.response && error.response.status === 500) {
           this.signupError = "Lỗi server. Vui lòng thử lại sau.";
         } else if (error.response && error.response.status === 422) {
-          this.signupError = error.response.data.error || error.response.data.message || "Dữ liệu không hợp lệ.";
-        } else if (error.response && (error.response.data.error || error.response.data.message)) {
-          this.signupError = error.response.data.error || error.response.data.message;
+          this.signupError =
+            error.response.data.error ||
+            error.response.data.message ||
+            "Dữ liệu không hợp lệ.";
+        } else if (
+          error.response &&
+          (error.response.data.error || error.response.data.message)
+        ) {
+          this.signupError =
+            error.response.data.error || error.response.data.message;
         } else {
-          this.signupError = "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
+          this.signupError =
+            "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
         }
       } finally {
         this.signupLoading = false;
@@ -310,26 +348,34 @@ export default {
   padding: 2rem 1rem;
   position: relative;
   overflow: hidden;
-  
+
   /* Animated Gradient Background */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  
+
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -50%;
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.1) 1px,
+      transparent 1px
+    );
     background-size: 50px 50px;
     animation: moveBackground 20s linear infinite;
   }
 }
 
 @keyframes moveBackground {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(50px, 50px); }
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(50px, 50px);
+  }
 }
 
 .card {
@@ -343,7 +389,7 @@ export default {
   border-radius: var(--radius-2xl);
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
-              0 0 0 1px rgba(255, 255, 255, 0.1);
+    0 0 0 1px rgba(255, 255, 255, 0.1);
   animation: slideUp 0.4s ease;
 
   &--accent {
@@ -406,7 +452,7 @@ export default {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-      
+
       & + .input__label {
         transform: translate(-0.25rem, -50%) scale(0.85);
         color: var(--primary);
@@ -450,7 +496,7 @@ export default {
 
 .password-input {
   position: relative;
-  
+
   .input__field {
     padding-right: 3rem;
   }
@@ -495,7 +541,7 @@ export default {
   font-weight: 500;
 
   &::before {
-    content: '⚠️';
+    content: "⚠️";
     font-size: 1rem;
   }
 }

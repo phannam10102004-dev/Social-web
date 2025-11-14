@@ -15,20 +15,23 @@
       <div class="post">
         <!-- ảnh đại diện user -->
         <div class="user-post-img">
-          <ProfileImage :id="post.userId"  />
+          <ProfileImage :id="post.userId" />
         </div>
 
         <!-- Nội dung bài post -->
         <div class="post__user-post">
-          <div class="post-header" :class="{ 'has-actions': canShowActionsFor(post) }">
+          <div
+            class="post-header"
+            :class="{ 'has-actions': canShowActionsFor(post) }"
+          >
             <div class="post-header-left">
               <PostDisplayName :id="post.userId" />
               <span class="post-time" v-if="post.createdAt">
                 {{ formatFullDateTime(post.createdAt) }}
               </span>
             </div>
-            <PostActions 
-              :post="post" 
+            <PostActions
+              :post="post"
               @edit-post="openEditModal"
               @delete-post="handleDeletePost"
             />
@@ -58,7 +61,7 @@
           <div class="user-post-image" v-if="post.file">
             <img
               class="image-post__img"
-              :src="`http://localhost:3000/uploads/${post.file}`"
+              :src="$buildAssetUrl('uploads/' + post.file)"
             />
           </div>
         </div>
@@ -71,7 +74,9 @@
         :reactions-count="post.reactionsCount || {}"
         :total-likes="post.likesCount || 0"
         :total-comments="commentsCountFor(post)"
-        @show-reactors="(reactionType) => showReactorsModal(post._id, reactionType)"
+        @show-reactors="
+          (reactionType) => showReactorsModal(post._id, reactionType)
+        "
         @show-all-reactors="showAllReactorsModal(post._id)"
         @show-comments="$emit('show-post-detail', post._id)"
       />
@@ -85,7 +90,16 @@
         :initial-reactions-count="post.reactionsCount || {}"
         :show-comment="true"
         @comment="$emit('show-post-detail', post._id)"
-        @updated="({ isLiked, likesCount, userReaction, reactionsCount }) => $store.commit('UPDATE_POST_LIKE', { postId: post._id, isLiked, likesCount, userReaction, reactionsCount })"
+        @updated="
+          ({ isLiked, likesCount, userReaction, reactionsCount }) =>
+            $store.commit('UPDATE_POST_LIKE', {
+              postId: post._id,
+              isLiked,
+              likesCount,
+              userReaction,
+              reactionsCount,
+            })
+        "
       />
 
       <!-- Preview Comments Section (Show max 3 recent comments) -->
@@ -98,15 +112,17 @@
           <ProfileImage :id="comment.userId" class="comment-avatar" />
           <div class="comment-content">
             <PostDisplayName :id="comment.userId" class="comment-author" />
-            <p class="comment-text" v-if="comment.comment">{{ comment.comment }}</p>
+            <p class="comment-text" v-if="comment.comment">
+              {{ comment.comment }}
+            </p>
             <img
               v-if="comment.file"
               class="comment-image"
-              :src="`http://localhost:3000/uploads/${comment.file}`"
+              :src="$buildAssetUrl('uploads/' + comment.file)"
             />
           </div>
         </div>
-        
+
         <!-- Show "View more" button if there are more than 3 comments -->
         <button
           v-if="commentsCountFor(post) > 3"
@@ -125,7 +141,11 @@
     </div>
 
     <!-- Scroll trigger element -->
-    <div ref="scrollTrigger" class="scroll-trigger" v-if="hasMore && !isLoading"></div>
+    <div
+      ref="scrollTrigger"
+      class="scroll-trigger"
+      v-if="hasMore && !isLoading"
+    ></div>
 
     <!-- End message -->
     <div class="end-message" v-if="!hasMore && posts.length > 0 && !isLoading">
@@ -162,23 +182,23 @@ import PostActions from "@/components/PostActions.vue";
 import PostEditModal from "@/components/PostEditModal.vue";
 import ReactorsModal from "@/components/ReactorsModal.vue";
 import { Skeletor } from "vue-skeletor";
-import HoverUserList from '@/components/HoverUserList';
-import { getTimeAgo, formatDateTime } from '@/utils/timeUtils';
+import HoverUserList from "@/components/HoverUserList";
+import { getTimeAgo, formatDateTime } from "@/utils/timeUtils";
 import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
   name: "Timeline",
-  components: { 
-    ProfileImage, 
-    Skeletor, 
-    PostDisplayName, 
-    LikeActionBar, 
+  components: {
+    ProfileImage,
+    Skeletor,
+    PostDisplayName,
+    LikeActionBar,
     ReactionsSummary,
-    HoverUserList, 
-    PostActions, 
+    HoverUserList,
+    PostActions,
     PostEditModal,
     ReactorsModal,
-    SyncLoader 
+    SyncLoader,
   },
   data() {
     return {
@@ -197,7 +217,7 @@ export default {
       showReactorsModalVisible: false,
       selectedPostIdForReactors: null,
       selectedPostReactionsCount: {},
-      selectedReactionTab: 'all',
+      selectedReactionTab: "all",
     };
   },
   async mounted() {
@@ -224,12 +244,12 @@ export default {
     try {
       await this.loadCommentCountsForPosts();
     } catch (err) {
-      console.error('Failed to load comment counts:', err);
+      console.error("Failed to load comment counts:", err);
     }
 
     // Setup infinite scroll
     this.setupInfiniteScroll();
-    
+
     // Setup intersection observer
     this.setupIntersectionObserver();
   },
@@ -255,24 +275,24 @@ export default {
   methods: {
     setupInfiniteScroll() {
       this.scrollHandler = this.throttle(this.handleScroll.bind(this), 200);
-      window.addEventListener('scroll', this.scrollHandler, { passive: true });
+      window.addEventListener("scroll", this.scrollHandler, { passive: true });
     },
     removeInfiniteScroll() {
       if (this.scrollHandler) {
-        window.removeEventListener('scroll', this.scrollHandler);
+        window.removeEventListener("scroll", this.scrollHandler);
       }
     },
     throttle(func, delay) {
       let timeoutId;
       let lastRan;
-      return function(...args) {
+      return function (...args) {
         if (!lastRan) {
           func.apply(this, args);
           lastRan = Date.now();
         } else {
           clearTimeout(timeoutId);
           timeoutId = setTimeout(() => {
-            if ((Date.now() - lastRan) >= delay) {
+            if (Date.now() - lastRan >= delay) {
               func.apply(this, args);
               lastRan = Date.now();
             }
@@ -287,23 +307,24 @@ export default {
       }
 
       // Tính toán khoảng cách đến cuối trang
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
 
       // Debug log
-      console.log('Scroll Debug:', {
+      console.log("Scroll Debug:", {
         scrollTop,
         windowHeight,
         documentHeight,
         remaining: documentHeight - (scrollTop + windowHeight),
         hasMore: this.hasMore,
-        loadingMore: this.loadingMore
+        loadingMore: this.loadingMore,
       });
 
       // Nếu cuộn đến gần cuối trang (còn 500px nữa là hết)
       if (scrollTop + windowHeight >= documentHeight - 500) {
-        console.log('Triggering loadMore...');
+        console.log("Triggering loadMore...");
         this.loadMore();
       }
     },
@@ -311,45 +332,48 @@ export default {
       // Wait for next tick to ensure the ref is available
       this.$nextTick(() => {
         if (!this.$refs.scrollTrigger) {
-          console.log('Scroll trigger ref not available yet');
+          console.log("Scroll trigger ref not available yet");
           return;
         }
 
         const options = {
           root: null, // viewport
-          rootMargin: '500px', // Trigger 500px before reaching the element
-          threshold: 0.1 // Trigger when 10% of the element is visible
+          rootMargin: "500px", // Trigger 500px before reaching the element
+          threshold: 0.1, // Trigger when 10% of the element is visible
         };
 
         this.observer = new IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            console.log('Intersection Observer:', {
+          entries.forEach((entry) => {
+            console.log("Intersection Observer:", {
               isIntersecting: entry.isIntersecting,
               hasMore: this.hasMore,
-              loadingMore: this.loadingMore
+              loadingMore: this.loadingMore,
             });
-            
+
             if (entry.isIntersecting && this.hasMore && !this.loadingMore) {
-              console.log('Observer triggering loadMore...');
+              console.log("Observer triggering loadMore...");
               this.loadMore();
             }
           });
         }, options);
 
         this.observer.observe(this.$refs.scrollTrigger);
-        console.log('Intersection Observer initialized');
+        console.log("Intersection Observer initialized");
       });
     },
     async loadMore() {
       this.loadingMore = true;
-      await this.$store.dispatch("loadPosts", { page: this.currentPage + 1, append: true });
+      await this.$store.dispatch("loadPosts", {
+        page: this.currentPage + 1,
+        append: true,
+      });
       this.loadingMore = false;
-      
+
       // Load comment counts for new posts
       try {
         await this.loadCommentCountsForPosts();
       } catch (err) {
-        console.error('Failed to load comment counts:', err);
+        console.error("Failed to load comment counts:", err);
       }
     },
     getTimeAgo(timestamp) {
@@ -360,18 +384,34 @@ export default {
     },
     async loadCommentCountsForPosts() {
       try {
-        const { getPostComments } = await import('@/api/posts');
+        const { getPostComments } = await import("@/api/posts");
         const tasks = (this.posts || []).map(async (p) => {
           try {
             const res = await getPostComments(p._id);
-            const arr = Array.isArray(res?.data) ? res.data : (res?.data?.comments || []);
-            
+            const arr = Array.isArray(res?.data)
+              ? res.data
+              : res?.data?.comments || [];
+
             // Store both count and actual comments
-            this.$set ? this.$set(this.commentCounts, p._id, arr.length) : (this.commentCounts = { ...this.commentCounts, [p._id]: arr.length });
-            this.$set ? this.$set(this.postComments, p._id, arr) : (this.postComments = { ...this.postComments, [p._id]: arr });
+            this.$set
+              ? this.$set(this.commentCounts, p._id, arr.length)
+              : (this.commentCounts = {
+                  ...this.commentCounts,
+                  [p._id]: arr.length,
+                });
+            this.$set
+              ? this.$set(this.postComments, p._id, arr)
+              : (this.postComments = { ...this.postComments, [p._id]: arr });
           } catch (_) {
-            this.$set ? this.$set(this.commentCounts, p._id, p.commentsCount || 0) : (this.commentCounts = { ...this.commentCounts, [p._id]: p.commentsCount || 0 });
-            this.$set ? this.$set(this.postComments, p._id, []) : (this.postComments = { ...this.postComments, [p._id]: [] });
+            this.$set
+              ? this.$set(this.commentCounts, p._id, p.commentsCount || 0)
+              : (this.commentCounts = {
+                  ...this.commentCounts,
+                  [p._id]: p.commentsCount || 0,
+                });
+            this.$set
+              ? this.$set(this.postComments, p._id, [])
+              : (this.postComments = { ...this.postComments, [p._id]: [] });
           }
         });
         await Promise.all(tasks);
@@ -385,14 +425,15 @@ export default {
     commentsCountFor(post) {
       if (!post) return 0;
       const cached = this.commentCounts[post._id];
-      if (typeof cached === 'number') return cached;
+      if (typeof cached === "number") return cached;
       return post.commentsCount || 0;
     },
     formatCompact(num) {
       const n = Number(num) || 0;
-      if (n >= 1000000000) return (n / 1000000000).toFixed(n % 1000000000 ? 1 : 0) + 'B';
-      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + 'M';
-      if (n >= 1000) return (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'K';
+      if (n >= 1000000000)
+        return (n / 1000000000).toFixed(n % 1000000000 ? 1 : 0) + "B";
+      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + "M";
+      if (n >= 1000) return (n / 1000).toFixed(n % 1000 ? 1 : 0) + "K";
       return String(n);
     },
     isPostTruncated(description) {
@@ -490,21 +531,21 @@ export default {
     },
     showReactorsModal(postId, reactionType) {
       // Tìm post để lấy reactionsCount
-      const post = this.posts.find(p => p._id === postId);
+      const post = this.posts.find((p) => p._id === postId);
       if (post) {
         this.selectedPostIdForReactors = postId;
         this.selectedPostReactionsCount = post.reactionsCount || {};
-        this.selectedReactionTab = reactionType || 'all';
+        this.selectedReactionTab = reactionType || "all";
         this.showReactorsModalVisible = true;
       }
     },
     showAllReactorsModal(postId) {
       // Hiển thị modal với tab "Tất cả"
-      const post = this.posts.find(p => p._id === postId);
+      const post = this.posts.find((p) => p._id === postId);
       if (post) {
         this.selectedPostIdForReactors = postId;
         this.selectedPostReactionsCount = post.reactionsCount || {};
-        this.selectedReactionTab = 'all';
+        this.selectedReactionTab = "all";
         this.showReactorsModalVisible = true;
       }
     },
@@ -512,57 +553,57 @@ export default {
       this.showReactorsModalVisible = false;
       this.selectedPostIdForReactors = null;
       this.selectedPostReactionsCount = {};
-      this.selectedReactionTab = 'all';
+      this.selectedReactionTab = "all";
     },
     async handleSavePost(updatedPost) {
       try {
         const currentUserId = this.$store.state.user?._id;
-        
+
         const postData = {
           description: updatedPost.description,
           file: updatedPost.file,
-          userId: currentUserId
+          userId: currentUserId,
         };
-        
-        await this.$store.dispatch('editPost', {
+
+        await this.$store.dispatch("editPost", {
           postId: updatedPost._id,
-          updatedPost: postData
+          updatedPost: postData,
         });
-        
+
         this.closeEditModal();
-        
+
         // Show success message (you might want to add a notification system)
-        console.log('Bài viết đã được cập nhật thành công');
+        console.log("Bài viết đã được cập nhật thành công");
       } catch (error) {
-        console.error('Error updating post:', error);
+        console.error("Error updating post:", error);
         // Handle error (show error message to user)
       }
     },
     async handleDeletePost(post) {
       try {
         const currentUserId = this.$store.state.user?._id;
-        
-        await this.$store.dispatch('deletePost', {
+
+        await this.$store.dispatch("deletePost", {
           postId: post._id,
-          userId: currentUserId
+          userId: currentUserId,
         });
-        
+
         // Show success message
-        console.log('Bài viết đã được xóa thành công');
+        console.log("Bài viết đã được xóa thành công");
       } catch (error) {
-        console.error('Error deleting post:', error);
+        console.error("Error deleting post:", error);
         // Handle error (show error message to user)
       }
     },
     updatePostCommentsCount(postId, newCount) {
       // Find and update the post's commentsCount
-      const post = this.posts.find(p => p._id === postId);
+      const post = this.posts.find((p) => p._id === postId);
       if (post) {
         post.commentsCount = newCount;
         // Force reactivity update
         this.$forceUpdate();
       }
-    }
+    },
   },
 };
 </script>
@@ -586,11 +627,13 @@ export default {
   box-sizing: border-box;
   max-width: 100%;
   overflow-x: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
 .timeline__post:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   transform: translateY(-4px);
   border-color: rgba(102, 126, 234, 0.2);
 }
@@ -679,7 +722,7 @@ export default {
 }
 
 .post-time::before {
-  content: '•';
+  content: "•";
   font-size: 0.625rem;
   color: var(--gray-400);
 }
@@ -765,7 +808,7 @@ export default {
 }
 
 .read-more-link::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -2px;
   left: 0;
@@ -1003,12 +1046,16 @@ export default {
   flex-shrink: 0;
   border: 2px solid transparent;
   background: linear-gradient(white, white) padding-box,
-              linear-gradient(135deg, #667eea, #764ba2) border-box;
+    linear-gradient(135deg, #667eea, #764ba2) border-box;
   box-shadow: 0 2px 6px rgba(102, 126, 234, 0.15);
 }
 
 .comment-content {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.04) 0%,
+    rgba(118, 75, 162, 0.04) 100%
+  );
   border: 1px solid rgba(102, 126, 234, 0.1);
   border-radius: 16px;
   padding: 0.75rem 1rem;
@@ -1043,7 +1090,11 @@ export default {
 }
 
 .view-more-comments-btn {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.06) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.06) 0%,
+    rgba(118, 75, 162, 0.06) 100%
+  );
   border: 2px solid rgba(102, 126, 234, 0.15);
   color: #667eea;
   font-weight: 600;
@@ -1352,7 +1403,11 @@ export default {
 .end-message span {
   display: inline-block;
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
   border-radius: var(--radius-xl);
   border: 1px solid rgba(102, 126, 234, 0.2);
 }

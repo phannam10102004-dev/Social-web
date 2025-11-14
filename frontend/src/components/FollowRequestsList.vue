@@ -3,7 +3,9 @@
     <div class="requests-card">
       <div class="requests-header">
         <h2>📬 Yêu cầu theo dõi</h2>
-        <span class="requests-count" v-if="requests.length > 0">{{ requests.length }}</span>
+        <span class="requests-count" v-if="requests.length > 0">{{
+          requests.length
+        }}</span>
       </div>
 
       <div v-if="loading" class="loading-state">
@@ -18,36 +20,42 @@
       </div>
 
       <div v-else class="requests-list">
-        <div 
-          v-for="request in requests" 
-          :key="request._id" 
+        <div
+          v-for="request in requests"
+          :key="request._id"
           class="request-item"
         >
-          <router-link 
-            :to="{ name: 'Profile', params: { id: request.fromUser._id } }" 
+          <router-link
+            :to="{ name: 'Profile', params: { id: request.fromUser._id } }"
             class="request-user"
           >
-            <img 
-              v-if="request.fromUser.profilePicture" 
-              :src="`http://localhost:3000/uploads/user/${request.fromUser.profilePicture}`" 
+            <img
+              v-if="request.fromUser.profilePicture"
+              :src="
+                $buildAssetUrl(
+                  'uploads/user/' + request.fromUser.profilePicture
+                )
+              "
               alt="Avatar"
               class="user-avatar"
             />
-            <img 
-              v-else 
-              src="@/assets/defaultProfile.png" 
+            <img
+              v-else
+              src="@/assets/defaultProfile.png"
               alt="Default Avatar"
               class="user-avatar"
             />
             <div class="user-info">
               <div class="user-name">{{ request.fromUser.displayName }}</div>
               <div class="user-email">{{ request.fromUser.email }}</div>
-              <div class="request-time">{{ formatTime(request.createdAt) }}</div>
+              <div class="request-time">
+                {{ formatTime(request.createdAt) }}
+              </div>
             </div>
           </router-link>
 
           <div class="request-actions">
-            <button 
+            <button
               class="btn btn-accept"
               @click="acceptRequest(request._id)"
               :disabled="processingRequest === request._id"
@@ -55,7 +63,7 @@
               <span v-if="processingRequest !== request._id">Chấp nhận</span>
               <SyncLoader v-else :color="'#fff'" :size="'8px'" />
             </button>
-            <button 
+            <button
               class="btn btn-reject"
               @click="rejectRequest(request._id)"
               :disabled="processingRequest === request._id"
@@ -71,12 +79,12 @@
 </template>
 
 <script>
-import { createToast } from 'mosha-vue-toastify'
-import SyncLoader from 'vue-spinner/src/SyncLoader.vue'
-import followRequestsAPI from '@/api/followRequests'
+import { createToast } from "mosha-vue-toastify";
+import SyncLoader from "vue-spinner/src/SyncLoader.vue";
+import followRequestsAPI from "@/api/followRequests";
 
 export default {
-  name: 'FollowRequestsList',
+  name: "FollowRequestsList",
   components: {
     SyncLoader,
   },
@@ -85,123 +93,131 @@ export default {
       requests: [],
       loading: true,
       processingRequest: null,
-    }
+    };
   },
   computed: {
     user() {
-      return this.$store.state.user || {}
+      return this.$store.state.user || {};
     },
   },
   async created() {
-    await this.loadRequests()
+    await this.loadRequests();
   },
   methods: {
     async loadRequests() {
-      this.loading = true
+      this.loading = true;
       try {
-        const response = await followRequestsAPI.getPendingRequests(this.user._id)
+        const response = await followRequestsAPI.getPendingRequests(
+          this.user._id
+        );
         if (response.status === 200) {
-          this.requests = response.data
+          this.requests = response.data;
         }
       } catch (error) {
-        console.error('Load requests error:', error)
+        console.error("Load requests error:", error);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async acceptRequest(requestId) {
-      this.processingRequest = requestId
+      this.processingRequest = requestId;
       try {
-        const response = await followRequestsAPI.acceptFollowRequest(requestId, this.user._id)
-        
+        const response = await followRequestsAPI.acceptFollowRequest(
+          requestId,
+          this.user._id
+        );
+
         if (response.status === 200) {
           // Xóa request khỏi danh sách
-          this.requests = this.requests.filter(r => r._id !== requestId)
-          
+          this.requests = this.requests.filter((r) => r._id !== requestId);
+
           createToast(
             {
-              title: 'Đã chấp nhận yêu cầu theo dõi',
+              title: "Đã chấp nhận yêu cầu theo dõi",
             },
             {
-              type: 'success',
+              type: "success",
               showIcon: true,
               timeout: 3000,
             }
-          )
+          );
 
           // Cập nhật số lượng followers trong store nếu cần
-          await this.$store.dispatch('loadUser')
+          await this.$store.dispatch("loadUser");
         }
       } catch (error) {
-        console.error('Accept request error:', error)
+        console.error("Accept request error:", error);
         createToast(
           {
-            title: 'Lỗi',
-            description: 'Không thể chấp nhận yêu cầu',
+            title: "Lỗi",
+            description: "Không thể chấp nhận yêu cầu",
           },
           {
-            type: 'danger',
+            type: "danger",
             showIcon: true,
             timeout: 3000,
           }
-        )
+        );
       } finally {
-        this.processingRequest = null
+        this.processingRequest = null;
       }
     },
 
     async rejectRequest(requestId) {
-      this.processingRequest = requestId
+      this.processingRequest = requestId;
       try {
-        const response = await followRequestsAPI.rejectFollowRequest(requestId, this.user._id)
-        
+        const response = await followRequestsAPI.rejectFollowRequest(
+          requestId,
+          this.user._id
+        );
+
         if (response.status === 200) {
           // Xóa request khỏi danh sách
-          this.requests = this.requests.filter(r => r._id !== requestId)
-          
+          this.requests = this.requests.filter((r) => r._id !== requestId);
+
           createToast(
             {
-              title: 'Đã từ chối yêu cầu theo dõi',
+              title: "Đã từ chối yêu cầu theo dõi",
             },
             {
-              type: 'info',
+              type: "info",
               showIcon: true,
               timeout: 3000,
             }
-          )
+          );
         }
       } catch (error) {
-        console.error('Reject request error:', error)
+        console.error("Reject request error:", error);
         createToast(
           {
-            title: 'Lỗi',
-            description: 'Không thể từ chối yêu cầu',
+            title: "Lỗi",
+            description: "Không thể từ chối yêu cầu",
           },
           {
-            type: 'danger',
+            type: "danger",
             showIcon: true,
             timeout: 3000,
           }
-        )
+        );
       } finally {
-        this.processingRequest = null
+        this.processingRequest = null;
       }
     },
 
     formatTime(timestamp) {
-      const now = new Date()
-      const time = new Date(timestamp)
-      const diff = Math.floor((now - time) / 1000) // seconds
+      const now = new Date();
+      const time = new Date(timestamp);
+      const diff = Math.floor((now - time) / 1000); // seconds
 
-      if (diff < 60) return 'Vừa xong'
-      if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`
-      if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`
-      if (diff < 604800) return `${Math.floor(diff / 86400)} ngày trước`
-      return time.toLocaleDateString('vi-VN')
+      if (diff < 60) return "Vừa xong";
+      if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+      if (diff < 604800) return `${Math.floor(diff / 86400)} ngày trước`;
+      return time.toLocaleDateString("vi-VN");
     },
   },
-}
+};
 </script>
 
 <style scoped>
@@ -284,7 +300,11 @@ export default {
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
   border-radius: 12px;
   border: 1px solid rgba(102, 126, 234, 0.1);
   transition: all 0.2s ease;

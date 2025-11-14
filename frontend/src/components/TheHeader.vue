@@ -8,9 +8,9 @@
       <div class="header__main">
         <div class="header__main-right">
           <div class="header__main-right-search" ref="searchContainer">
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm người dùng" 
+            <input
+              type="text"
+              placeholder="Tìm kiếm người dùng"
               v-model="searchQuery"
               @input="handleSearchInput"
               @focus="handleSearchFocus"
@@ -19,48 +19,75 @@
               @keydown.enter.prevent="selectSearchResult(selectedIndex)"
             />
             <i class="material-icons" @click="handleSearch">search</i>
-            
+
             <!-- User Search Results Dropdown -->
-            <div 
-              class="search-results" 
-              v-show="showSearchResults && (isSearching || searchResults.length > 0) && searchQuery && searchQuery.trim().length > 0"
+            <div
+              class="search-results"
+              v-show="
+                showSearchResults &&
+                (isSearching || searchResults.length > 0) &&
+                searchQuery &&
+                searchQuery.trim().length > 0
+              "
             >
-              <div class="search-results-header" v-if="!isSearching && searchResults.length > 0">
-                <span class="results-count">Tìm thấy {{ searchResults.length }} kết quả</span>
+              <div
+                class="search-results-header"
+                v-if="!isSearching && searchResults.length > 0"
+              >
+                <span class="results-count"
+                  >Tìm thấy {{ searchResults.length }} kết quả</span
+                >
               </div>
-              <div 
-                v-for="(user, index) in searchResults" 
+              <div
+                v-for="(user, index) in searchResults"
                 :key="user._id"
                 class="search-result-item"
-                :class="{ 'selected': selectedIndex === index }"
+                :class="{ selected: selectedIndex === index }"
                 @click="goToUserProfile(user._id)"
                 @mouseover="selectedIndex = index"
               >
                 <div class="search-user-avatar">
-                  <img 
-                    v-if="user.profilePicture" 
-                    :src="`http://localhost:3000/uploads/user/${user.profilePicture}`" 
+                  <img
+                    v-if="user.profilePicture"
+                    :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
                     alt="User avatar"
                   />
-                  <img 
+                  <img
                     v-else
-                    src="@/assets/defaultProfile.png" 
+                    src="@/assets/defaultProfile.png"
                     alt="Default avatar"
                   />
                 </div>
                 <div class="search-user-info">
-                  <span class="search-user-name" v-html="highlightMatch(user.displayName || user.email, searchQuery)"></span>
-                  <span class="search-user-email" v-if="user.email && user.displayName">{{ user.email }}</span>
+                  <span
+                    class="search-user-name"
+                    v-html="
+                      highlightMatch(
+                        user.displayName || user.email,
+                        searchQuery
+                      )
+                    "
+                  ></span>
+                  <span
+                    class="search-user-email"
+                    v-if="user.email && user.displayName"
+                    >{{ user.email }}</span
+                  >
                 </div>
               </div>
               <div class="search-loading" v-if="isSearching">
                 <div class="loading-spinner"></div>
                 <span>Đang tìm kiếm...</span>
               </div>
-              <div class="no-results" v-if="!isSearching && searchQuery && searchResults.length === 0">
+              <div
+                class="no-results"
+                v-if="!isSearching && searchQuery && searchResults.length === 0"
+              >
                 <span class="no-results-icon">🔍</span>
                 <span class="no-results-text">Không tìm thấy người dùng</span>
-                <span class="no-results-hint">Thử tìm kiếm với từ khóa khác</span>
+                <span class="no-results-hint"
+                  >Thử tìm kiếm với từ khóa khác</span
+                >
               </div>
             </div>
           </div>
@@ -68,7 +95,8 @@
           <div class="header-actions">
             <button
               @click="
-                (openAddImagePost = !openAddImagePost), (openAddTextPost = false)
+                (openAddImagePost = !openAddImagePost),
+                  (openAddTextPost = false)
               "
               class="btn btn-imageadd"
             >
@@ -83,11 +111,13 @@
           <i class="material-icons messages-icon" @click="toggleMessages">
             mail
           </i>
-          <span v-if="messageUnreadCount > 0" class="messages-badge">{{ messageUnreadCount }}</span>
-          
+          <span v-if="messageUnreadCount > 0" class="messages-badge">{{
+            messageUnreadCount
+          }}</span>
+
           <!-- Messages Dropdown -->
-          <MessagesDropdown 
-            :isVisible="showMessages" 
+          <MessagesDropdown
+            :isVisible="showMessages"
             @close="showMessages = false"
             @open-chat="handleOpenChat"
           />
@@ -95,14 +125,19 @@
 
         <!-- Notification Icon -->
         <div class="notification-wrapper" ref="notificationContainer">
-          <i class="material-icons notification-icon" @click="toggleNotifications">
+          <i
+            class="material-icons notification-icon"
+            @click="toggleNotifications"
+          >
             notifications
           </i>
-          <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
-          
+          <span v-if="unreadCount > 0" class="notification-badge">{{
+            unreadCount
+          }}</span>
+
           <!-- Notification Dropdown -->
-          <NotificationList 
-            :isVisible="showNotifications" 
+          <NotificationList
+            :isVisible="showNotifications"
             @close="showNotifications = false"
             @open-post-modal="handleOpenPostModal"
             @open-follow-requests-modal="handleOpenFollowRequestsModal"
@@ -112,109 +147,111 @@
         <!-- <label class="header__user-username"
           > {{ user.displayName }}</label
         >     -->
-    <a-dropdown :trigger="['click']" placement="bottomRight">
-      <a class="ant-dropdown-link user-avatar-wrapper" @click.prevent>
-        <div class="avatar-container">
-          <img
-            v-if="user.profilePicture"
-            class="user-avatar-img"
-            :src="`http://localhost:3000/uploads/user/${user.profilePicture}`"
-            :alt="user.displayName"
-          />
-          <img
-            v-else
-            class="user-avatar-img"
-            src="@/assets/defaultProfile.png"
-            alt="User"
-          />
-          <div class="avatar-status-dot"></div>
-        </div>
-        <DownOutlined class="dropdown-arrow" />
-      </a>
-      <template #overlay>
-        <div class="custom-dropdown-menu">
-          <div class="dropdown-header">
-            <div class="dropdown-user-info">
+        <a-dropdown :trigger="['click']" placement="bottomRight">
+          <a class="ant-dropdown-link user-avatar-wrapper" @click.prevent>
+            <div class="avatar-container">
               <img
                 v-if="user.profilePicture"
-                class="dropdown-avatar"
-                :src="`http://localhost:3000/uploads/user/${user.profilePicture}`"
+                class="user-avatar-img"
+                :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                :alt="user.displayName"
               />
               <img
                 v-else
-                class="dropdown-avatar"
+                class="user-avatar-img"
                 src="@/assets/defaultProfile.png"
+                alt="User"
               />
-              <div class="dropdown-user-details">
-                <span class="dropdown-username">{{ user.displayName || user.email }}</span>
-                <span class="dropdown-user-email">{{ user.email }}</span>
-              </div>
+              <div class="avatar-status-dot"></div>
             </div>
-          </div>
-          <div class="dropdown-divider"></div>
-          <a-menu class="styled-menu">
-            <router-link
-              v-if="currentUser"
-              :to="{
-                name: 'Profile',
-                params: {
-                  id: currentUser,
-                },
-              }"
-            >
-              <a-menu-item class="menu-item">
-                <span class="menu-icon">👤</span>
-                <span class="menu-text">Trang cá nhân</span>
-              </a-menu-item>
-            </router-link>
-            <div class="dropdown-divider"></div>
-            <a-menu-item class="menu-item logout-item" @click="logout">
-              <span class="menu-icon">🚪</span>
-              <span class="menu-text">Đăng xuất</span>
-            </a-menu-item>
-          </a-menu>
-        </div>
-      </template>
-    </a-dropdown>
-        
+            <DownOutlined class="dropdown-arrow" />
+          </a>
+          <template #overlay>
+            <div class="custom-dropdown-menu">
+              <div class="dropdown-header">
+                <div class="dropdown-user-info">
+                  <img
+                    v-if="user.profilePicture"
+                    class="dropdown-avatar"
+                    :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                  />
+                  <img
+                    v-else
+                    class="dropdown-avatar"
+                    src="@/assets/defaultProfile.png"
+                  />
+                  <div class="dropdown-user-details">
+                    <span class="dropdown-username">{{
+                      user.displayName || user.email
+                    }}</span>
+                    <span class="dropdown-user-email">{{ user.email }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="dropdown-divider"></div>
+              <a-menu class="styled-menu">
+                <router-link
+                  v-if="currentUser"
+                  :to="{
+                    name: 'Profile',
+                    params: {
+                      id: currentUser,
+                    },
+                  }"
+                >
+                  <a-menu-item class="menu-item">
+                    <span class="menu-icon">👤</span>
+                    <span class="menu-text">Trang cá nhân</span>
+                  </a-menu-item>
+                </router-link>
+                <div class="dropdown-divider"></div>
+                <a-menu-item class="menu-item logout-item" @click="logout">
+                  <span class="menu-icon">🚪</span>
+                  <span class="menu-text">Đăng xuất</span>
+                </a-menu-item>
+              </a-menu>
+            </div>
+          </template>
+        </a-dropdown>
       </div>
     </div>
 
-  <AddPost v-if="openAddImagePost" :id="currentUser" @close="openAddImagePost = false" />
+    <AddPost
+      v-if="openAddImagePost"
+      :id="currentUser"
+      @close="openAddImagePost = false"
+    />
 
-  <!-- Post Detail Modal -->
-  <div 
-    v-if="showPostModal" 
-    class="modal-overlay"
-    @click.self="closePostModal"
-  >
-    <div class="modal-content">
-      <button class="modal-close-btn" @click="closePostModal">×</button>
-      <PostDetail 
-        v-if="selectedPostId" 
-        :id="selectedPostId" 
-        :commentId="selectedCommentId"
-        :scrollToComment="scrollToComment"
-        @close="closePostModal"
-      />
+    <!-- Post Detail Modal -->
+    <div
+      v-if="showPostModal"
+      class="modal-overlay"
+      @click.self="closePostModal"
+    >
+      <div class="modal-content">
+        <button class="modal-close-btn" @click="closePostModal">×</button>
+        <PostDetail
+          v-if="selectedPostId"
+          :id="selectedPostId"
+          :commentId="selectedCommentId"
+          :scrollToComment="scrollToComment"
+          @close="closePostModal"
+        />
+      </div>
     </div>
-  </div>
 
-  <!-- Change Password Modal -->
-  <ChangePassword
-    v-if="showChangePassword"
-    @close="closeChangePassword"
-  />
+    <!-- Change Password Modal -->
+    <ChangePassword v-if="showChangePassword" @close="closeChangePassword" />
 
-  <!-- Follow Requests Modal -->
-  <FollowRequestsModal
-    v-if="showFollowRequestsModal"
-    @close="showFollowRequestsModal = false"
-    @request-updated="refreshNotifications"
-  />
+    <!-- Follow Requests Modal -->
+    <FollowRequestsModal
+      v-if="showFollowRequestsModal"
+      @close="showFollowRequestsModal = false"
+      @request-updated="refreshNotifications"
+    />
 
-  <!-- Chat Popups Manager -->
-  <ChatPopupsManager ref="chatPopupsManager" />
+    <!-- Chat Popups Manager -->
+    <ChatPopupsManager ref="chatPopupsManager" />
   </header>
 </template>
 
@@ -227,7 +264,7 @@ import ChatPopupsManager from "@/components/ChatPopupsManager.vue";
 import PostDetail from "@/views/post/components/PostDetail.vue";
 import ChangePassword from "@/views/profile/components/ChangePassword.vue";
 import FollowRequestsModal from "@/components/FollowRequestsModal.vue";
-import socketService from '@/services/socketService'
+import socketService from "@/services/socketService";
 
 export default {
   name: "TheHeader",
@@ -274,43 +311,43 @@ export default {
     },
     messageUnreadCount() {
       return this.$store.getters.unreadCount || 0;
-    }
+    },
   },
   methods: {
     logout() {
       localStorage.clear();
       this.$router.push("/login");
     },
-    
+
     setupMessageSocketListener() {
       // Listen for new messages in active conversation
       socketService.onNewMessage(this.handleNewMessageForUnreadCount);
-      
+
       // Listen for new message notifications (for unread count)
       socketService.onNewMessageNotification((data) => {
-        console.log('🔔 [TheHeader] New message notification received:', data)
-        this.$store.dispatch('loadConversations')
+        console.log("🔔 [TheHeader] New message notification received:", data);
+        this.$store.dispatch("loadConversations");
       });
-      
+
       // Also listen for conversation updates
       socketService.onConversationUpdated(() => {
-        console.log('📬 [TheHeader] Conversation updated, reloading')
-        this.$store.dispatch('loadConversations')
+        console.log("📬 [TheHeader] Conversation updated, reloading");
+        this.$store.dispatch("loadConversations");
       });
     },
-    
+
     async handleNewMessageForUnreadCount(data) {
-      console.log('📬 [TheHeader] New message received:', data)
-      
+      console.log("📬 [TheHeader] New message received:", data);
+
       // Reload conversations ngay lập tức để cập nhật unread count
-      await this.$store.dispatch('loadConversations')
-      
+      await this.$store.dispatch("loadConversations");
+
       // Trigger global update cho các components khác
       if (window.updateSidebarNotifications) {
-        window.updateSidebarNotifications()
+        window.updateSidebarNotifications();
       }
     },
-    
+
     handleSearchInput() {
       // Hiện loading ngay khi bắt đầu gõ
       if (this.searchQuery && this.searchQuery.length > 0) {
@@ -322,18 +359,18 @@ export default {
         this.showSearchResults = false;
         return;
       }
-      
+
       // Clear any existing timeout
       if (this.searchTimeout) {
         clearTimeout(this.searchTimeout);
       }
-      
+
       // Set a new timeout to avoid making too many requests while typing
       this.searchTimeout = setTimeout(() => {
         this.handleSearch();
       }, 300);
     },
-    
+
     handleSearchFocus() {
       // Khi focus vào ô search, nếu đã có text và results thì hiện lại dropdown
       if (this.searchQuery && this.searchQuery.trim().length > 0) {
@@ -345,52 +382,52 @@ export default {
         }
       }
     },
-    
+
     async handleSearch() {
       if (!this.searchQuery || this.searchQuery.trim().length === 0) {
         this.searchResults = [];
         this.showSearchResults = false;
         return;
       }
-      
+
       this.isSearching = true;
       this.showSearchResults = true; // Hiện modal ngay khi bắt đầu tìm kiếm
-      
-      console.log('🔍 Searching for:', this.searchQuery); // Debug log
-      
+
+      console.log("🔍 Searching for:", this.searchQuery); // Debug log
+
       try {
-        const { getAllUsers } = await import('@/api/users');
+        const { getAllUsers } = await import("@/api/users");
         const response = await getAllUsers();
-        
-        console.log('📥 API Response:', response); // Debug log
-        
+
+        console.log("📥 API Response:", response); // Debug log
+
         if (response.status === 200) {
           const allUsers = response.data;
           const searchLower = this.searchQuery.toLowerCase().trim();
-          
-          console.log('👥 Total users:', allUsers.length); // Debug log
-          
+
+          console.log("👥 Total users:", allUsers.length); // Debug log
+
           // Filter và score users dựa trên độ phù hợp
           const scoredUsers = allUsers
-            .map(user => {
-              const displayName = (user.displayName || '').toLowerCase();
-              const email = (user.email || '').toLowerCase();
+            .map((user) => {
+              const displayName = (user.displayName || "").toLowerCase();
+              const email = (user.email || "").toLowerCase();
               let score = 0;
-              
+
               // Exact match (điểm cao nhất)
               if (displayName === searchLower) {
                 score += 100;
               } else if (email === searchLower) {
                 score += 90;
               }
-              
+
               // Starts with (bắt đầu bằng)
               if (displayName.startsWith(searchLower)) {
                 score += 50;
               } else if (email.startsWith(searchLower)) {
                 score += 40;
               }
-              
+
               // Contains (chứa chuỗi tìm kiếm)
               if (displayName.includes(searchLower)) {
                 score += 30;
@@ -398,13 +435,17 @@ export default {
               if (email.includes(searchLower)) {
                 score += 20;
               }
-              
+
               // Fuzzy matching - tìm từng từ
-              const searchWords = searchLower.split(' ').filter(w => w.length > 0);
-              const nameWords = displayName.split(' ').filter(w => w.length > 0);
-              
-              searchWords.forEach(searchWord => {
-                nameWords.forEach(nameWord => {
+              const searchWords = searchLower
+                .split(" ")
+                .filter((w) => w.length > 0);
+              const nameWords = displayName
+                .split(" ")
+                .filter((w) => w.length > 0);
+
+              searchWords.forEach((searchWord) => {
+                nameWords.forEach((nameWord) => {
                   if (nameWord.startsWith(searchWord)) {
                     score += 15;
                   } else if (nameWord.includes(searchWord)) {
@@ -412,15 +453,15 @@ export default {
                   }
                 });
               });
-              
+
               return {
                 user,
                 score,
                 displayName: user.displayName || user.email,
-                email: user.email
+                email: user.email,
               };
             })
-            .filter(item => item.score > 0) // Chỉ lấy kết quả có điểm > 0
+            .filter((item) => item.score > 0) // Chỉ lấy kết quả có điểm > 0
             .sort((a, b) => {
               // Sắp xếp theo điểm giảm dần
               if (b.score !== a.score) {
@@ -430,30 +471,30 @@ export default {
               return a.displayName.localeCompare(b.displayName);
             })
             .slice(0, 8); // Giới hạn tối đa 8 kết quả phù hợp nhất
-          
-          this.searchResults = scoredUsers.map(item => item.user);
+
+          this.searchResults = scoredUsers.map((item) => item.user);
           this.showSearchResults = true;
-          
-          console.log('✅ Search results:', this.searchResults.length, 'found'); // Debug log
+
+          console.log("✅ Search results:", this.searchResults.length, "found"); // Debug log
         }
       } catch (error) {
-        console.error('❌ Error searching users:', error);
+        console.error("❌ Error searching users:", error);
         this.searchResults = [];
       } finally {
         this.isSearching = false;
       }
     },
-    
+
     navigateSearchResults(direction) {
       if (this.searchResults.length === 0) return;
-      
-      if (direction === 'down') {
+
+      if (direction === "down") {
         if (this.selectedIndex < this.searchResults.length - 1) {
           this.selectedIndex++;
         } else {
           this.selectedIndex = 0; // Loop back to the first item
         }
-      } else if (direction === 'up') {
+      } else if (direction === "up") {
         if (this.selectedIndex > 0) {
           this.selectedIndex--;
         } else {
@@ -461,102 +502,113 @@ export default {
         }
       }
     },
-    
+
     selectSearchResult(index) {
       if (index >= 0 && index < this.searchResults.length) {
         const selectedUser = this.searchResults[index];
         this.goToUserProfile(selectedUser._id);
       }
     },
-    
+
     goToUserProfile(userId) {
       this.showSearchResults = false;
-      this.searchQuery = ''; // Clear search after selecting
+      this.searchQuery = ""; // Clear search after selecting
       this.searchResults = [];
       this.selectedIndex = -1;
       this.$router.push({
-        name: 'Profile',
-        params: { id: userId }
+        name: "Profile",
+        params: { id: userId },
       });
     },
-    
+
     highlightMatch(text, query) {
       if (!text || !query) return text;
-      
+
       const searchLower = query.toLowerCase().trim();
       const textLower = text.toLowerCase();
-      
+
       // Tìm vị trí match
       const index = textLower.indexOf(searchLower);
-      
+
       if (index === -1) {
         // Không tìm thấy exact match, thử tìm từng từ
-        const words = searchLower.split(' ').filter(w => w.length > 0);
+        const words = searchLower.split(" ").filter((w) => w.length > 0);
         let highlightedText = text;
-        
-        words.forEach(word => {
+
+        words.forEach((word) => {
           const wordIndex = textLower.indexOf(word);
           if (wordIndex !== -1) {
-            const regex = new RegExp(`(${word})`, 'gi');
-            highlightedText = highlightedText.replace(regex, '<mark>$1</mark>');
+            const regex = new RegExp(`(${word})`, "gi");
+            highlightedText = highlightedText.replace(regex, "<mark>$1</mark>");
           }
         });
-        
+
         return highlightedText;
       }
-      
+
       // Highlight exact match
       const before = text.substring(0, index);
       const match = text.substring(index, index + query.length);
       const after = text.substring(index + query.length);
-      
+
       return `${before}<mark>${match}</mark>${after}`;
     },
-    
+
     toggleNotifications() {
-      console.log('Toggle notifications called, current state:', this.showNotifications);
+      console.log(
+        "Toggle notifications called, current state:",
+        this.showNotifications
+      );
       this.showNotifications = !this.showNotifications;
-      console.log('New state:', this.showNotifications);
-      
+      console.log("New state:", this.showNotifications);
+
       if (this.showNotifications) {
-        console.log('Loading notifications...');
-        console.log('Notifications in store before load:', this.$store.state.notifications);
-        
+        console.log("Loading notifications...");
+        console.log(
+          "Notifications in store before load:",
+          this.$store.state.notifications
+        );
+
         // Đóng messages dropdown nếu đang mở
         this.showMessages = false;
-        
+
         // Refresh notification count và load notifications
         Promise.all([
-          this.$store.dispatch('loadNotificationUnreadCount'),
-          this.$store.dispatch('loadNotifications')
-        ]).then(() => {
-          console.log('Notifications loaded successfully');
-          console.log('Notifications in store after load:', this.$store.state.notifications);
-        }).catch(error => {
-          console.error('Error loading notifications:', error);
-        });
+          this.$store.dispatch("loadNotificationUnreadCount"),
+          this.$store.dispatch("loadNotifications"),
+        ])
+          .then(() => {
+            console.log("Notifications loaded successfully");
+            console.log(
+              "Notifications in store after load:",
+              this.$store.state.notifications
+            );
+          })
+          .catch((error) => {
+            console.error("Error loading notifications:", error);
+          });
       }
     },
 
     toggleMessages() {
-      console.log('Toggle messages called, current state:', this.showMessages);
+      console.log("Toggle messages called, current state:", this.showMessages);
       this.showMessages = !this.showMessages;
-      console.log('New state:', this.showMessages);
-      
+      console.log("New state:", this.showMessages);
+
       if (this.showMessages) {
-        console.log('Loading messages...');
-        
+        console.log("Loading messages...");
+
         // Đóng notifications dropdown nếu đang mở
         this.showNotifications = false;
-        
+
         // Load conversations và unread count
-        Promise.all([
-          this.$store.dispatch('loadConversations')
-        ]).then(() => {
-          console.log('Messages loaded successfully');
-        }).catch(error => {
-          console.error('Error loading messages:', error);
-        });
+        Promise.all([this.$store.dispatch("loadConversations")])
+          .then(() => {
+            console.log("Messages loaded successfully");
+          })
+          .catch((error) => {
+            console.error("Error loading messages:", error);
+          });
       }
     },
 
@@ -564,7 +616,7 @@ export default {
     refreshNotifications() {
       this.$store.dispatch("loadNotificationUnreadCount");
     },
-    
+
     handleOpenPostModal(data) {
       this.selectedPostId = data.postId;
       this.selectedCommentId = data.commentId || null;
@@ -581,7 +633,7 @@ export default {
     },
 
     handleOpenChat(conversation) {
-      console.log('Opening chat popup for conversation:', conversation);
+      console.log("Opening chat popup for conversation:", conversation);
       // Gọi method của ChatPopupsManager để mở chat
       if (this.$refs.chatPopupsManager) {
         this.$refs.chatPopupsManager.openChat(conversation);
@@ -605,27 +657,25 @@ export default {
 
     handleLogoClick() {
       // Kiểm tra xem đang ở trang chủ hay không
-      if (this.$route.name === 'Home') {
+      if (this.$route.name === "Home") {
         // Đang ở trang chủ → reload timeline
-        console.log('🏠 Already on home page, reloading timeline...');
-        
+        console.log("🏠 Already on home page, reloading timeline...");
+
         // Emit event hoặc gọi method reload timeline
         // Sử dụng event bus hoặc store để trigger reload
-        this.$store.dispatch('reloadTimeline');
-        
+        this.$store.dispatch("reloadTimeline");
+
         // Scroll to top
         window.scrollTo({
           top: 0,
-          behavior: 'smooth'
+          behavior: "smooth",
         });
       } else {
         // Đang ở trang khác → navigate về trang chủ
-        console.log('🏠 Navigating to home page...');
-        this.$router.push({ name: 'Home' });
+        console.log("🏠 Navigating to home page...");
+        this.$router.push({ name: "Home" });
       }
     },
-
-
 
     startNotificationPolling() {
       // Check for new notifications every 30 seconds
@@ -645,7 +695,11 @@ export default {
     },
 
     handleVisibilityChange() {
-      if (!document.hidden && this.$store.state.user && this.$store.state.user._id) {
+      if (
+        !document.hidden &&
+        this.$store.state.user &&
+        this.$store.state.user._id
+      ) {
         // Tab is now visible, refresh notification count
         this.$store.dispatch("loadNotificationUnreadCount");
       }
@@ -653,69 +707,81 @@ export default {
 
     handleClickOutside(event) {
       // Check if click is outside the search container
-      if (this.$refs.searchContainer && !this.$refs.searchContainer.contains(event.target)) {
+      if (
+        this.$refs.searchContainer &&
+        !this.$refs.searchContainer.contains(event.target)
+      ) {
         this.showSearchResults = false;
         this.isSearching = false;
         // Không clear searchQuery để giữ lại text đã nhập
       }
-      
+
       // Check if click is outside the notification container
-      if (this.$refs.notificationContainer && !this.$refs.notificationContainer.contains(event.target)) {
+      if (
+        this.$refs.notificationContainer &&
+        !this.$refs.notificationContainer.contains(event.target)
+      ) {
         this.showNotifications = false;
       }
-      
+
       // Check if click is outside the messages container
-      if (this.$refs.messagesContainer && !this.$refs.messagesContainer.contains(event.target)) {
+      if (
+        this.$refs.messagesContainer &&
+        !this.$refs.messagesContainer.contains(event.target)
+      ) {
         this.showMessages = false;
       }
     },
   },
   async mounted() {
     // Only load data if user is authenticated
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) {
       return;
     }
-    
+
     this.$store.dispatch("loadUser");
-    
+
     // Load notification unread count
     this.$store.dispatch("loadNotificationUnreadCount");
-    
+
     // Load message unread count
     this.$store.dispatch("loadConversations");
-    
+
     // Start polling for new notifications every 30 seconds
     this.startNotificationPolling();
-    
+
     // Setup socket listener for new messages to update unread count
     this.setupMessageSocketListener();
-    
+
     // Add event listener to handle clicks outside the search container
-    document.addEventListener('click', this.handleClickOutside);
-    
+    document.addEventListener("click", this.handleClickOutside);
+
     // Add visibility change listener to refresh notifications when tab is focused
-    document.addEventListener('visibilitychange', this.handleVisibilityChange);
-    
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
+
     // Tạo global function để refresh notifications
     window.refreshNotifications = this.refreshNotifications;
     window.updateNotifications = this.refreshNotifications;
   },
-  
+
   beforeUnmount() {
     // Remove event listener when component is destroyed
-    document.removeEventListener('click', this.handleClickOutside);
-    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-    
+    document.removeEventListener("click", this.handleClickOutside);
+    document.removeEventListener(
+      "visibilitychange",
+      this.handleVisibilityChange
+    );
+
     // Clean up socket listeners
-    socketService.off('newMessage', this.handleNewMessageForUnreadCount);
-    socketService.off('conversationUpdate');
-    
+    socketService.off("newMessage", this.handleNewMessageForUnreadCount);
+    socketService.off("conversationUpdate");
+
     // Clean up global function
     if (window.refreshNotifications === this.refreshNotifications) {
       delete window.refreshNotifications;
     }
-    
+
     // Stop polling when component is destroyed
     this.stopNotificationPolling();
   },
@@ -752,7 +818,11 @@ export default {
 }
 
 .header__left:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   transform: translateX(2px);
 }
 
@@ -809,7 +879,6 @@ export default {
   justify-content: center;
   position: relative;
   margin-top: 0.7rem;
-
 }
 
 .header__main-right-search {
@@ -912,7 +981,11 @@ export default {
 .search-results-header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--gray-100);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
 }
 
 .results-count {
@@ -935,14 +1008,18 @@ export default {
 
 .search-result-item:hover,
 .search-result-item.selected {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   border-left-color: var(--primary);
   padding-left: 1.25rem;
 }
 
 .search-result-item:hover::before,
 .search-result-item.selected::before {
-  content: '';
+  content: "";
   position: absolute;
   right: 1rem;
   top: 50%;
@@ -997,7 +1074,11 @@ export default {
 }
 
 .search-user-name :deep(mark) {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.2) 0%,
+    rgba(118, 75, 162, 0.2) 100%
+  );
   color: var(--primary);
   font-weight: 700;
   padding: 0.125rem 0.25rem;
@@ -1112,13 +1193,17 @@ export default {
 }
 
 .btn-imageadd::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 100%
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -1177,7 +1262,11 @@ export default {
 }
 
 .user-avatar-wrapper:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   transform: translateY(-1px);
 }
 
@@ -1219,7 +1308,8 @@ export default {
 }
 
 @keyframes pulse-dot {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -1244,7 +1334,8 @@ export default {
 .custom-dropdown-menu {
   background: var(--white);
   border-radius: var(--radius-2xl);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   min-width: 280px;
   padding: 0;
   overflow: hidden;
@@ -1265,7 +1356,11 @@ export default {
 
 .dropdown-header {
   padding: 1.25rem;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
   border-bottom: 1px solid var(--gray-100);
 }
 
@@ -1334,13 +1429,21 @@ export default {
 }
 
 :deep(.ant-menu-item:hover) {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.1) 0%,
+    rgba(118, 75, 162, 0.1) 100%
+  ) !important;
   border-color: rgba(102, 126, 234, 0.2) !important;
   transform: translateX(4px) !important;
 }
 
 :deep(.ant-menu-item.logout-item:hover) {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.08) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.08) 0%,
+    rgba(220, 38, 38, 0.08) 100%
+  ) !important;
   border-color: rgba(239, 68, 68, 0.2) !important;
 }
 
@@ -1401,7 +1504,11 @@ export default {
 }
 
 :deep(.ant-menu-item-selected) {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.12) 0%,
+    rgba(118, 75, 162, 0.12) 100%
+  ) !important;
 }
 
 :deep(.ant-dropdown) {
@@ -1427,7 +1534,11 @@ export default {
 }
 
 .messages-icon:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   color: var(--primary);
   transform: scale(1.05);
 }
@@ -1470,7 +1581,11 @@ export default {
 }
 
 .notification-icon:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   color: var(--primary);
   transform: scale(1.05);
 }
@@ -1496,7 +1611,8 @@ export default {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {

@@ -3,25 +3,42 @@
     <div class="friends" ref="friendsContainer">
       <h4 class="friends-title">Liên hệ</h4>
       <Skeletor circle size="50" v-if="isLoading && users.length === 0" />
-      <Skeletor v-if="isLoading && users.length === 0" width="150" height="20" />
-      
-      <div class="friend" v-for="user in users" :key="user._id" @click="openChat(user)">
+      <Skeletor
+        v-if="isLoading && users.length === 0"
+        width="150"
+        height="20"
+      />
+
+      <div
+        class="friend"
+        v-for="user in users"
+        :key="user._id"
+        @click="openChat(user)"
+      >
         <div class="friend-info">
           <div class="avatar-wrapper">
-            <img v-if="user.profilePicture" class="image-post__img" :src="`http://localhost:3000/uploads/user/${user.profilePicture}`" />
-            <img v-else class="image-post__img" src="@/assets/defaultProfile.png" />
+            <img
+              v-if="user.profilePicture"
+              class="image-post__img"
+              :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+            />
+            <img
+              v-else
+              class="image-post__img"
+              src="@/assets/defaultProfile.png"
+            />
             <span v-if="user.isOnline" class="online-dot"></span>
           </div>
           <label>{{ user.displayName }}</label>
         </div>
       </div>
-      
+
       <!-- Loading more indicator -->
       <div v-if="isLoadingMore" class="loading-more">
         <Skeletor circle size="40" />
         <Skeletor width="120" height="16" />
       </div>
-      
+
       <!-- No more users -->
       <div v-if="!hasMore && users.length > 0" class="no-more">
         <span>Đã hiển thị tất cả liên hệ</span>
@@ -31,10 +48,10 @@
 </template>
 
 <script>
-import { Skeletor } from 'vue-skeletor';
+import { Skeletor } from "vue-skeletor";
 
 export default {
-  name: 'SidebarRight',
+  name: "SidebarRight",
   components: { Skeletor },
   data() {
     return {
@@ -47,12 +64,12 @@ export default {
     };
   },
   async created() {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) return;
     await this.loadContacts();
   },
   mounted() {
-    console.log('🔵 SidebarRight mounted');
+    console.log("🔵 SidebarRight mounted");
     this.setupScrollListener();
   },
   watch: {
@@ -61,104 +78,111 @@ export default {
       this.$nextTick(() => {
         this.setupScrollListener();
       });
-    }
+    },
   },
   beforeUnmount() {
     const container = this.$refs.friendsContainer;
     if (container) {
-      container.removeEventListener('scroll', this.handleScroll);
+      container.removeEventListener("scroll", this.handleScroll);
     }
   },
   methods: {
     setupScrollListener() {
       setTimeout(() => {
         const container = this.$refs.friendsContainer;
-        console.log('🔍 Looking for container ref:', container);
-        
+        console.log("🔍 Looking for container ref:", container);
+
         if (container) {
-          console.log('📦 Container info:', {
+          console.log("📦 Container info:", {
             scrollHeight: container.scrollHeight,
             clientHeight: container.clientHeight,
             canScroll: container.scrollHeight > container.clientHeight,
           });
-          
+
           // Remove old listener nếu có
-          container.removeEventListener('scroll', this.handleScroll);
+          container.removeEventListener("scroll", this.handleScroll);
           // Thêm scroll listener mới
-          container.addEventListener('scroll', this.handleScroll);
-          console.log('✅ Scroll listener attached');
+          container.addEventListener("scroll", this.handleScroll);
+          console.log("✅ Scroll listener attached");
         } else {
-          console.error('❌ friendsContainer ref not found!');
+          console.error("❌ friendsContainer ref not found!");
         }
       }, 500);
     },
     async loadContacts() {
       if (this.isLoading || this.isLoadingMore || !this.hasMore) {
-        console.log('⏭️ Skip loading:', { isLoading: this.isLoading, isLoadingMore: this.isLoadingMore, hasMore: this.hasMore });
+        console.log("⏭️ Skip loading:", {
+          isLoading: this.isLoading,
+          isLoadingMore: this.isLoadingMore,
+          hasMore: this.hasMore,
+        });
         return;
       }
-      
+
       this.isLoading = this.page === 0;
       this.isLoadingMore = this.page > 0;
-      
+
       console.log(`🔄 Loading page ${this.page}...`);
-      
+
       try {
-        await this.$store.dispatch('loadUser');
-        const { getSuggestedContacts } = await import('@/api/users');
-        const response = await getSuggestedContacts(this.limit, this.page * this.limit);
+        await this.$store.dispatch("loadUser");
+        const { getSuggestedContacts } = await import("@/api/users");
+        const response = await getSuggestedContacts(
+          this.limit,
+          this.page * this.limit
+        );
         const newUsers = response.data.users || [];
-        
+
         console.log(`✅ Got ${newUsers.length} users from API`);
-        
+
         if (newUsers.length < this.limit) {
           this.hasMore = false;
-          console.log('📭 No more users available');
+          console.log("📭 No more users available");
         }
-        
+
         this.users = [...this.users, ...newUsers];
         this.page++;
-        
-        console.log('✅ Total contacts loaded:', this.users.length);
+
+        console.log("✅ Total contacts loaded:", this.users.length);
       } catch (error) {
-        console.error('❌ Load contacts error:', error);
+        console.error("❌ Load contacts error:", error);
       } finally {
         this.isLoading = false;
         this.isLoadingMore = false;
       }
     },
-    
+
     handleScroll(event) {
       const container = event.target;
       const scrollTop = container.scrollTop;
       const scrollHeight = container.scrollHeight;
       const clientHeight = container.clientHeight;
-      
-      console.log('📜 Scroll detected:', {
+
+      console.log("📜 Scroll detected:", {
         scrollTop,
         scrollHeight,
         clientHeight,
-        remaining: scrollHeight - (scrollTop + clientHeight)
+        remaining: scrollHeight - (scrollTop + clientHeight),
       });
-      
+
       // Khi scroll gần đến cuối (còn 100px)
       if (scrollTop + clientHeight >= scrollHeight - 100) {
-        console.log('🔄 Loading more contacts...');
+        console.log("🔄 Loading more contacts...");
         this.loadContacts();
       }
     },
-    
+
     openChat(user) {
       // Gọi global method để mở ChatPopup
       if (window.openChatPopup) {
         window.openChatPopup({
           recipientId: user._id,
           recipientName: user.displayName || user.email,
-          recipientAvatar: user.profilePicture
+          recipientAvatar: user.profilePicture,
         });
       }
-    }
-  }
+    },
+  },
 };
 </script>
 

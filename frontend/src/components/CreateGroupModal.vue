@@ -11,9 +11,9 @@
           <!-- Group Name Input -->
           <div class="form-group">
             <label>Tên nhóm *</label>
-            <input 
-              type="text" 
-              v-model="groupName" 
+            <input
+              type="text"
+              v-model="groupName"
               placeholder="Nhập tên nhóm..."
               maxlength="100"
               @keypress.enter="createGroup"
@@ -26,9 +26,9 @@
             <label>Thêm thành viên (tối thiểu 2 người)</label>
             <div class="search-box">
               <i class="material-icons">search</i>
-              <input 
-                type="text" 
-                v-model="searchQuery" 
+              <input
+                type="text"
+                v-model="searchQuery"
                 placeholder="Tìm kiếm bạn bè..."
               />
             </div>
@@ -40,17 +40,23 @@
               Đã chọn ({{ selectedMembers.length }})
             </div>
             <div class="selected-chips">
-              <div 
-                v-for="member in selectedMembers" 
+              <div
+                v-for="member in selectedMembers"
                 :key="member._id"
                 class="member-chip"
               >
-                <img 
-                  :src="member.profilePicture ? `http://localhost:3000/uploads/user/${member.profilePicture}` : require('@/assets/defaultProfile.png')" 
+                <img
+                  :src="
+                    member.profilePicture
+                      ? $buildAssetUrl('uploads/user/' + member.profilePicture)
+                      : require('@/assets/defaultProfile.png')
+                  "
                   :alt="member.displayName"
                 />
                 <span>{{ member.displayName || member.email }}</span>
-                <i class="material-icons" @click="removeMember(member._id)">close</i>
+                <i class="material-icons" @click="removeMember(member._id)"
+                  >close</i
+                >
               </div>
             </div>
           </div>
@@ -65,32 +71,47 @@
             <div v-else-if="friends.length === 0" class="empty-state">
               <i class="material-icons">people_outline</i>
               <p>Chưa có bạn bè nào</p>
-              <p class="empty-hint">Hãy theo dõi (follow) người dùng khác trước để tạo nhóm chat</p>
+              <p class="empty-hint">
+                Hãy theo dõi (follow) người dùng khác trước để tạo nhóm chat
+              </p>
             </div>
 
-            <div v-else-if="filteredFriends.length === 0 && searchQuery" class="empty-state">
+            <div
+              v-else-if="filteredFriends.length === 0 && searchQuery"
+              class="empty-state"
+            >
               <i class="material-icons">search_off</i>
               <p>Không tìm thấy "{{ searchQuery }}"</p>
             </div>
 
             <div v-else class="friends-scroll">
-              <div 
-                v-for="friend in filteredFriends" 
+              <div
+                v-for="friend in filteredFriends"
                 :key="friend._id"
                 class="friend-item"
-                :class="{ 'selected': isSelected(friend._id) }"
+                :class="{ selected: isSelected(friend._id) }"
                 @click="toggleMember(friend)"
               >
-                <img 
-                  :src="friend.profilePicture ? `http://localhost:3000/uploads/user/${friend.profilePicture}` : require('@/assets/defaultProfile.png')" 
+                <img
+                  :src="
+                    friend.profilePicture
+                      ? $buildAssetUrl('uploads/user/' + friend.profilePicture)
+                      : require('@/assets/defaultProfile.png')
+                  "
                   :alt="friend.displayName"
                 />
                 <div class="friend-info">
-                  <span class="friend-name">{{ friend.displayName || friend.email }}</span>
+                  <span class="friend-name">{{
+                    friend.displayName || friend.email
+                  }}</span>
                   <span class="friend-email">{{ friend.email }}</span>
                 </div>
                 <i class="material-icons check-icon">
-                  {{ isSelected(friend._id) ? 'check_circle' : 'radio_button_unchecked' }}
+                  {{
+                    isSelected(friend._id)
+                      ? "check_circle"
+                      : "radio_button_unchecked"
+                  }}
                 </i>
               </div>
             </div>
@@ -99,8 +120,8 @@
 
         <div class="modal-footer">
           <button class="btn-cancel" @click="closeModal">Hủy</button>
-          <button 
-            class="btn-create" 
+          <button
+            class="btn-create"
             @click="createGroup"
             :disabled="!canCreate"
           >
@@ -113,18 +134,18 @@
 </template>
 
 <script>
-import MessageAPI from '@/api/messages';
-import GroupMessageAPI from '@/api/groupMessages';
+import MessageAPI from "@/api/messages";
+import GroupMessageAPI from "@/api/groupMessages";
 
 export default {
-  name: 'CreateGroupModal',
+  name: "CreateGroupModal",
   data() {
     return {
-      groupName: '',
-      searchQuery: '',
+      groupName: "",
+      searchQuery: "",
       friends: [],
       selectedMembers: [],
-      loading: false
+      loading: false,
     };
   },
   computed: {
@@ -133,84 +154,89 @@ export default {
         return this.friends;
       }
       const query = this.searchQuery.toLowerCase();
-      return this.friends.filter(friend => {
-        const name = (friend.displayName || '').toLowerCase();
-        const email = (friend.email || '').toLowerCase();
+      return this.friends.filter((friend) => {
+        const name = (friend.displayName || "").toLowerCase();
+        const email = (friend.email || "").toLowerCase();
         return name.includes(query) || email.includes(query);
       });
     },
     canCreate() {
-      return this.groupName.trim().length > 0 && this.selectedMembers.length >= 2;
-    }
+      return (
+        this.groupName.trim().length > 0 && this.selectedMembers.length >= 2
+      );
+    },
   },
   methods: {
     async loadFriends() {
       this.loading = true;
       try {
-        console.log('🔍 Loading friends...');
+        console.log("🔍 Loading friends...");
         const response = await MessageAPI.getFriends();
-        console.log('📥 Friends response:', response);
-        console.log('📥 Friends data:', response.data);
-        
+        console.log("📥 Friends response:", response);
+        console.log("📥 Friends data:", response.data);
+
         if (response.status === 200) {
           this.friends = response.data || [];
-          console.log('✅ Friends loaded:', this.friends.length, 'friends');
+          console.log("✅ Friends loaded:", this.friends.length, "friends");
         }
       } catch (error) {
-        console.error('❌ Load friends error:', error);
-        console.error('Error response:', error.response);
+        console.error("❌ Load friends error:", error);
+        console.error("Error response:", error.response);
       } finally {
         this.loading = false;
       }
     },
-    
+
     toggleMember(friend) {
-      const index = this.selectedMembers.findIndex(m => m._id === friend._id);
+      const index = this.selectedMembers.findIndex((m) => m._id === friend._id);
       if (index !== -1) {
         this.selectedMembers.splice(index, 1);
       } else {
         this.selectedMembers.push(friend);
       }
     },
-    
+
     removeMember(memberId) {
-      const index = this.selectedMembers.findIndex(m => m._id === memberId);
+      const index = this.selectedMembers.findIndex((m) => m._id === memberId);
       if (index !== -1) {
         this.selectedMembers.splice(index, 1);
       }
     },
-    
+
     isSelected(memberId) {
-      return this.selectedMembers.some(m => m._id === memberId);
+      return this.selectedMembers.some((m) => m._id === memberId);
     },
-    
+
     async createGroup() {
       if (!this.canCreate) {
         return;
       }
 
       try {
-        const memberIds = this.selectedMembers.map(m => m._id);
-        const response = await GroupMessageAPI.createGroup(this.groupName, memberIds);
-        
+        const memberIds = this.selectedMembers.map((m) => m._id);
+        const response = await GroupMessageAPI.createGroup(
+          this.groupName,
+          memberIds
+        );
+
         if (response.status === 201) {
-          this.$emit('group-created', response.data);
-          this.$store.dispatch('loadConversations'); // Reload conversations
+          this.$emit("group-created", response.data);
+          this.$store.dispatch("loadConversations"); // Reload conversations
           this.closeModal();
         }
       } catch (error) {
-        console.error('Create group error:', error);
-        alert('Không thể tạo nhóm. Vui lòng thử lại!');
+        console.error("Create group error:", error);
+        alert("Không thể tạo nhóm. Vui lòng thử lại!");
       }
     },
-    
+
     closeModal() {
-      this.$emit('close');
-    }
+      this.$emit("close");
+    },
   },
   mounted() {
     this.loadFriends();
-  }
+  },
 };
 </script>
 
@@ -344,7 +370,11 @@ export default {
 }
 
 .selected-members {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
   border-radius: var(--radius-lg);
   padding: 1rem;
 }
@@ -405,7 +435,8 @@ export default {
   overflow: hidden;
 }
 
-.loading, .empty-state {
+.loading,
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -425,7 +456,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state i {
@@ -459,7 +492,11 @@ export default {
 }
 
 .friend-item.selected {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.1) 0%,
+    rgba(118, 75, 162, 0.1) 100%
+  );
 }
 
 .friend-item img {
@@ -505,7 +542,8 @@ export default {
   border-top: 1px solid var(--gray-200);
 }
 
-.btn-cancel, .btn-create {
+.btn-cancel,
+.btn-create {
   flex: 1;
   padding: 0.875rem 1.5rem;
   border-radius: var(--radius-lg);

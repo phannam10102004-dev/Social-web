@@ -77,7 +77,10 @@
         Đăng nhập bằng Google
       </button>
       <!-- Hidden div for Google Sign-In button (fallback) -->
-      <div id="google-signin-button" style="display: none; margin-top: 1rem;"></div>
+      <div
+        id="google-signin-button"
+        style="display: none; margin-top: 1rem"
+      ></div>
     </div>
   </article>
 </template>
@@ -114,66 +117,66 @@ export default {
     async loginWithGoogle() {
       try {
         // Sử dụng redirect flow thay vì popup/credential
-        const clientId = '749220537519-beauagaft0dmdc9uf2ije8fo0mrdc9jd.apps.googleusercontent.com';
-        const redirectUri = 'http://localhost:3000/api/auth/google/callback';
-        const scope = 'openid email profile';
-        
+        const clientId =
+          "749220537519-beauagaft0dmdc9uf2ije8fo0mrdc9jd.apps.googleusercontent.com";
+        const redirectUri = `${this.$uploadBaseUrl}/api/auth/google/callback`;
+        const scope = "openid email profile";
+
         // Tạo Google OAuth URL
-        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        const googleAuthUrl =
+          `https://accounts.google.com/o/oauth2/v2/auth?` +
           `client_id=${clientId}` +
           `&redirect_uri=${encodeURIComponent(redirectUri)}` +
           `&response_type=code` +
           `&scope=${encodeURIComponent(scope)}` +
           `&access_type=offline` +
           `&prompt=consent`;
-        
-        console.log('Redirecting to Google OAuth:', googleAuthUrl);
-        
+
+        console.log("Redirecting to Google OAuth:", googleAuthUrl);
+
         // Redirect đến Google OAuth
         window.location.href = googleAuthUrl;
-        
       } catch (error) {
-        console.error('Google login error:', error);
-        this.error = 'Đăng nhập Google thất bại. Vui lòng thử lại.';
+        console.error("Google login error:", error);
+        this.error = "Đăng nhập Google thất bại. Vui lòng thử lại.";
       }
     },
 
-    
     async handleGoogleCallback() {
       // Lấy query params từ hash route (sau dấu #)
       const hash = window.location.hash;
-      const queryString = hash.includes('?') ? hash.split('?')[1] : '';
+      const queryString = hash.includes("?") ? hash.split("?")[1] : "";
       const urlParams = new URLSearchParams(queryString);
-      
-      const token = urlParams.get('token');
-      const success = urlParams.get('success');
-      const error = urlParams.get('error');
-      
-      if (token && success === 'google_login') {
+
+      const token = urlParams.get("token");
+      const success = urlParams.get("success");
+      const error = urlParams.get("error");
+
+      if (token && success === "google_login") {
         // Lưu token
         localStorage.setItem("token", token);
-        
+
         // Load user info
         try {
-          await this.$store.dispatch('loadUser');
-          
+          await this.$store.dispatch("loadUser");
+
           // Clear URL params
-          window.history.replaceState({}, document.title, '/#/login');
-          
+          window.history.replaceState({}, document.title, "/#/login");
+
           // Redirect to home
           this.$router.replace("/home");
         } catch (err) {
-          console.error('Failed to load user:', err);
-          this.error = 'Không thể tải thông tin người dùng. Vui lòng thử lại.';
-          localStorage.removeItem('token');
-          window.history.replaceState({}, document.title, '/#/login');
+          console.error("Failed to load user:", err);
+          this.error = "Không thể tải thông tin người dùng. Vui lòng thử lại.";
+          localStorage.removeItem("token");
+          window.history.replaceState({}, document.title, "/#/login");
         }
       } else if (error) {
-        this.error = 'Đăng nhập Google thất bại. Vui lòng thử lại.';
-        window.history.replaceState({}, document.title, '/#/login');
+        this.error = "Đăng nhập Google thất bại. Vui lòng thử lại.";
+        window.history.replaceState({}, document.title, "/#/login");
       }
     },
-    
+
     validateEmail() {
       // Trả về true nếu email hợp lệ, false nếu không hợp lệ
       return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email);
@@ -200,20 +203,27 @@ export default {
         this.showEmailError = false;
       }
 
-
       try {
-        const axios = (await import('@/utils/axios')).default;
-        const response = await axios.post('/auth/login', {
-          email: this.email,
-          password: this.password,
-        }, {
-          withCredentials: true,
-        });
+        const axios = (await import("@/utils/axios")).default;
+        const response = await axios.post(
+          "/auth/login",
+          {
+            email: this.email,
+            password: this.password,
+          },
+          {
+            withCredentials: true,
+          }
+        );
         this.error = false;
         localStorage.setItem("token", response.data.token);
         this.$router.push("/home");
       } catch (error) {
-        if (error.response && error.response.data && error.response.data.error) {
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.error
+        ) {
           this.error = error.response.data.error;
         } else {
           this.error = "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.";
@@ -240,11 +250,15 @@ export default {
 }
 
 .login::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.1) 1px,
+    transparent 1px
+  );
   background-size: 50px 50px;
   animation: moveBackground 20s linear infinite;
   opacity: 0.3;
@@ -265,7 +279,8 @@ export default {
   padding: 2.5rem;
   border-radius: var(--radius-2xl);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
   max-width: 440px;
   width: 100%;
   position: relative;
@@ -336,7 +351,7 @@ export default {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-      
+
       & + .input__label {
         transform: translate(-0.25rem, -50%) scale(0.85);
         color: var(--primary);
@@ -380,7 +395,7 @@ export default {
 
 .password-input {
   position: relative;
-  
+
   .input__field {
     padding-right: 3rem;
   }
@@ -426,7 +441,7 @@ export default {
 }
 
 .warn::before {
-  content: '⚠️';
+  content: "⚠️";
   font-size: 1rem;
 }
 

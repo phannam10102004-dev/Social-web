@@ -10,119 +10,116 @@
         </div>
 
         <div class="modal-body">
-        <!-- User info section -->
-        <div class="user-info">
-          <ProfileImage :id="currentUser._id" class="user-avatar" />
-          <div class="user-details">
-            <span class="user-name">{{ currentUser.displayName || currentUser.email }}</span>
+          <!-- User info section -->
+          <div class="user-info">
+            <ProfileImage :id="currentUser._id" class="user-avatar" />
+            <div class="user-details">
+              <span class="user-name">{{
+                currentUser.displayName || currentUser.email
+              }}</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Post content editor -->
-        <div class="content-editor">
-          <textarea
-            ref="descriptionInput"
-            v-model="editedDescription"
-            class="description-input"
-            :placeholder="placeholder"
-            rows="4"
-            @input="autoResize"
-          ></textarea>
-        </div>
+          <!-- Post content editor -->
+          <div class="content-editor">
+            <textarea
+              ref="descriptionInput"
+              v-model="editedDescription"
+              class="description-input"
+              :placeholder="placeholder"
+              rows="4"
+              @input="autoResize"
+            ></textarea>
+          </div>
 
-        <!-- Current image display and replacement -->
-        <div class="image-section" v-if="editedImageUrl || newImageFile">
-          <div class="image-container">
-            <img 
-              :src="currentImageUrl" 
-              :alt="imageAlt"
-              class="post-image"
+          <!-- Current image display and replacement -->
+          <div class="image-section" v-if="editedImageUrl || newImageFile">
+            <div class="image-container">
+              <img :src="currentImageUrl" :alt="imageAlt" class="post-image" />
+              <button
+                class="remove-image-btn"
+                @click="removeImage"
+                title="Xóa ảnh"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+
+          <!-- Image upload section -->
+          <div class="upload-section">
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              @change="handleFileChange"
+              style="display: none"
             />
-            <button 
-              class="remove-image-btn"
-              @click="removeImage"
-              title="Xóa ảnh"
+            <button
+              class="upload-button"
+              @click="triggerFileInput"
+              :disabled="isUploading"
             >
-              &times;
+              <span class="upload-icon">📷</span>
+              <span>{{
+                editedImageUrl || newImageFile ? "Thay đổi ảnh" : "Thêm ảnh"
+              }}</span>
             </button>
           </div>
+
+          <!-- Error message -->
+          <div class="error-message" v-if="errorMessage">
+            {{ errorMessage }}
+          </div>
         </div>
 
-        <!-- Image upload section -->
-        <div class="upload-section">
-          <input
-            ref="fileInput"
-            type="file"
-            accept="image/*"
-            @change="handleFileChange"
-            style="display: none;"
-          />
-          <button 
-            class="upload-button"
-            @click="triggerFileInput"
-            :disabled="isUploading"
+        <div class="modal-footer">
+          <button class="cancel-button" @click="close" :disabled="isSaving">
+            Hủy
+          </button>
+          <button
+            class="save-button"
+            @click="saveChanges"
+            :disabled="!hasChanges || isSaving"
+            :class="{ loading: isSaving }"
           >
-            <span class="upload-icon">📷</span>
-            <span>{{ editedImageUrl || newImageFile ? 'Thay đổi ảnh' : 'Thêm ảnh' }}</span>
+            <span v-if="isSaving">Đang lưu...</span>
+            <span v-else>Lưu thay đổi</span>
           </button>
         </div>
-
-        <!-- Error message -->
-        <div class="error-message" v-if="errorMessage">
-          {{ errorMessage }}
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button 
-          class="cancel-button" 
-          @click="close"
-          :disabled="isSaving"
-        >
-          Hủy
-        </button>
-        <button 
-          class="save-button" 
-          @click="saveChanges"
-          :disabled="!hasChanges || isSaving"
-          :class="{ 'loading': isSaving }"
-        >
-          <span v-if="isSaving">Đang lưu...</span>
-          <span v-else>Lưu thay đổi</span>
-        </button>
       </div>
     </div>
-  </div>
   </Teleport>
 </template>
 
 <script>
-import ProfileImage from '@/components/ProfileImage.vue';
+import ProfileImage from "@/components/ProfileImage.vue";
+import { API_BASE_URL } from "@/config/env";
 
 export default {
-  name: 'PostEditModal',
+  name: "PostEditModal",
   components: {
-    ProfileImage
+    ProfileImage,
   },
   props: {
     show: {
       type: Boolean,
-      default: false
+      default: false,
     },
     post: {
       type: Object,
-      default: () => ({})
-    }
+      default: () => ({}),
+    },
   },
   data() {
     return {
-      editedDescription: '',
-      editedImageUrl: '',
+      editedDescription: "",
+      editedImageUrl: "",
       newImageFile: null,
       isSaving: false,
       isUploading: false,
-      errorMessage: '',
-      placeholder: 'Bạn đang nghĩ gì?'
+      errorMessage: "",
+      placeholder: "Bạn đang nghĩ gì?",
     };
   },
   computed: {
@@ -131,8 +128,11 @@ export default {
     },
     hasChanges() {
       if (!this.post) return false;
-      const descriptionChanged = this.editedDescription !== (this.post.description || '');
-      const imageChanged = this.newImageFile !== null || this.editedImageUrl !== (this.post.file || '');
+      const descriptionChanged =
+        this.editedDescription !== (this.post.description || "");
+      const imageChanged =
+        this.newImageFile !== null ||
+        this.editedImageUrl !== (this.post.file || "");
       return descriptionChanged || imageChanged;
     },
     currentImageUrl() {
@@ -140,20 +140,20 @@ export default {
         return URL.createObjectURL(this.newImageFile);
       }
       if (this.editedImageUrl) {
-        return `http://localhost:3000/uploads/${this.editedImageUrl}`;
+        return this.$buildAssetUrl("uploads/" + this.editedImageUrl);
       }
-      return '';
+      return "";
     },
     imageAlt() {
-      return 'Ảnh bài viết';
-    }
+      return "Ảnh bài viết";
+    },
   },
   watch: {
     show(newVal) {
       if (newVal) {
         this.resetForm();
         // Lock body scroll when modal opens
-        document.body.style.overflow = 'hidden';
+        document.body.style.overflow = "hidden";
         this.$nextTick(() => {
           this.autoResize();
           if (this.$refs.descriptionInput) {
@@ -162,7 +162,7 @@ export default {
         });
       } else {
         // Unlock body scroll when modal closes
-        document.body.style.overflow = '';
+        document.body.style.overflow = "";
       }
     },
     post: {
@@ -171,28 +171,28 @@ export default {
           this.resetForm();
         }
       },
-      immediate: false
-    }
+      immediate: false,
+    },
   },
   methods: {
     resetForm() {
       if (this.post) {
-        this.editedDescription = this.post.description || '';
-        this.editedImageUrl = this.post.file || '';
+        this.editedDescription = this.post.description || "";
+        this.editedImageUrl = this.post.file || "";
       } else {
-        this.editedDescription = '';
-        this.editedImageUrl = '';
+        this.editedDescription = "";
+        this.editedImageUrl = "";
       }
       this.newImageFile = null;
-      this.errorMessage = '';
+      this.errorMessage = "";
       this.isSaving = false;
     },
     autoResize() {
       this.$nextTick(() => {
         const textarea = this.$refs.descriptionInput;
         if (textarea) {
-          textarea.style.height = 'auto';
-          textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
+          textarea.style.height = "auto";
+          textarea.style.height = Math.min(textarea.scrollHeight, 300) + "px";
         }
       });
     },
@@ -203,7 +203,7 @@ export default {
     },
     close() {
       if (!this.isSaving) {
-        this.$emit('close');
+        this.$emit("close");
       }
     },
     triggerFileInput() {
@@ -213,34 +213,34 @@ export default {
       const file = event.target.files[0];
       if (file) {
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-          this.errorMessage = 'Vui lòng chọn file ảnh hợp lệ.';
+        if (!file.type.startsWith("image/")) {
+          this.errorMessage = "Vui lòng chọn file ảnh hợp lệ.";
           return;
         }
 
         // Validate file size (e.g., max 10MB)
         const maxSize = 10 * 1024 * 1024; // 10MB
         if (file.size > maxSize) {
-          this.errorMessage = 'Kích thước file không được vượt quá 10MB.';
+          this.errorMessage = "Kích thước file không được vượt quá 10MB.";
           return;
         }
 
         this.newImageFile = file;
-        this.errorMessage = '';
+        this.errorMessage = "";
       }
     },
     removeImage() {
       this.newImageFile = null;
-      this.editedImageUrl = '';
+      this.editedImageUrl = "";
       if (this.$refs.fileInput) {
-        this.$refs.fileInput.value = '';
+        this.$refs.fileInput.value = "";
       }
     },
     async saveChanges() {
       if (!this.post || !this.hasChanges || this.isSaving) return;
 
       this.isSaving = true;
-      this.errorMessage = '';
+      this.errorMessage = "";
 
       try {
         let imageFileName = this.editedImageUrl;
@@ -253,13 +253,13 @@ export default {
         const updatedPost = {
           ...this.post,
           description: this.editedDescription,
-          file: imageFileName
+          file: imageFileName,
         };
 
-        this.$emit('save', updatedPost);
+        this.$emit("save", updatedPost);
       } catch (error) {
-        console.error('Error saving post:', error);
-        this.errorMessage = 'Có lỗi xảy ra khi lưu bài viết. Vui lòng thử lại.';
+        console.error("Error saving post:", error);
+        this.errorMessage = "Có lỗi xảy ra khi lưu bài viết. Vui lòng thử lại.";
       } finally {
         this.isSaving = false;
       }
@@ -267,31 +267,31 @@ export default {
     async uploadImage(file) {
       // Create FormData for file upload
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
       try {
         // You'll need to implement this API call
-        const response = await fetch('http://localhost:3000/api/posts/upload', {
-          method: 'POST',
-          body: formData
+        const response = await fetch(`${API_BASE_URL}/posts/upload`, {
+          method: "POST",
+          body: formData,
         });
 
         if (!response.ok) {
-          throw new Error('Upload failed');
+          throw new Error("Upload failed");
         }
 
         const data = await response.json();
         return file.name; // Return the filename
       } catch (error) {
-        console.error('Upload error:', error);
-        throw new Error('Không thể tải lên ảnh. Vui lòng thử lại.');
+        console.error("Upload error:", error);
+        throw new Error("Không thể tải lên ảnh. Vui lòng thử lại.");
       }
-    }
+    },
   },
   beforeUnmount() {
     // Ensure body scroll is restored when component is destroyed
-    document.body.style.overflow = '';
-  }
+    document.body.style.overflow = "";
+  },
 };
 </script>
 
@@ -366,7 +366,11 @@ export default {
   padding: 20px 24px;
   border-bottom: 1px solid #e8eaed;
   flex-shrink: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
 }
 
 .modal-title {
@@ -550,7 +554,11 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   border: 2px solid rgba(102, 126, 234, 0.2);
   border-radius: 12px;
   padding: 12px 16px;
@@ -586,7 +594,11 @@ export default {
   font-size: 14px;
   margin-top: 12px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(228, 30, 63, 0.08) 0%, rgba(220, 30, 63, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(228, 30, 63, 0.08) 0%,
+    rgba(220, 30, 63, 0.08) 100%
+  );
   border-radius: 10px;
   border-left: 4px solid #e41e3f;
   display: flex;
@@ -607,7 +619,7 @@ export default {
 }
 
 .error-message::before {
-  content: '⚠️';
+  content: "⚠️";
   font-size: 16px;
 }
 
@@ -665,7 +677,11 @@ export default {
 }
 
 .save-button.loading {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.7) 0%, rgba(118, 75, 162, 0.7) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.7) 0%,
+    rgba(118, 75, 162, 0.7) 100%
+  );
   cursor: wait;
 }
 
@@ -674,23 +690,23 @@ export default {
   .modal-overlay {
     padding: 70px 15px 15px 15px;
   }
-  
+
   .modal-container {
     max-width: 100%;
     max-height: calc(100vh - 85px);
     border-radius: 16px;
   }
-  
+
   .modal-header,
   .modal-body,
   .modal-footer {
     padding: 20px;
   }
-  
+
   .modal-title {
     font-size: 18px;
   }
-  
+
   .post-image {
     max-height: 350px;
   }
@@ -700,31 +716,31 @@ export default {
   .modal-overlay {
     padding: 65px 12px 12px 12px;
   }
-  
+
   .modal-container {
     max-height: calc(100vh - 77px);
     border-radius: 14px;
   }
-  
+
   .modal-header,
   .modal-body,
   .modal-footer {
     padding: 16px;
   }
-  
+
   .modal-title {
     font-size: 17px;
   }
-  
+
   .post-image {
     max-height: 300px;
   }
-  
+
   .close-button {
     width: 36px;
     height: 36px;
   }
-  
+
   .close-button span {
     font-size: 24px;
   }

@@ -33,7 +33,7 @@
         height="300"
       />
       <div class="main-post" v-else>
-        <ProfileImage :id="posts.userId"  />
+        <ProfileImage :id="posts.userId" />
 
         <div class="post__user-content">
           <div class="post-user-info">
@@ -48,7 +48,7 @@
           <img
             v-if="posts.file"
             class="post-detail-main-img"
-            :src="`http://localhost:3000/uploads/${posts.file}`"
+            :src="$buildAssetUrl('uploads/' + posts.file)"
           />
         </div>
       </div>
@@ -73,12 +73,19 @@
         :initial-user-reaction="userReaction"
         :initial-reactions-count="reactionsCount"
         @comment="focusCommentInput"
-        @updated="({ isLiked: l, likesCount: c, userReaction: r, reactionsCount: rc }) => { 
-          isLiked = l; 
-          likesCount = c; 
-          userReaction = r;
-          reactionsCount = rc;
-        }"
+        @updated="
+          ({
+            isLiked: l,
+            likesCount: c,
+            userReaction: r,
+            reactionsCount: rc,
+          }) => {
+            isLiked = l;
+            likesCount = c;
+            userReaction = r;
+            reactionsCount = rc;
+          }
+        "
       />
 
       <!-- Comments Section -->
@@ -105,7 +112,7 @@
               <img
                 v-if="comment.file"
                 class="comment-img"
-                :src="`http://localhost:3000/uploads/${comment.file}`"
+                :src="$buildAssetUrl('uploads/' + comment.file)"
               />
             </div>
           </div>
@@ -178,32 +185,32 @@ import ReactionsSummary from "@/components/ReactionsSummary.vue";
 import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 import { Skeletor } from "vue-skeletor";
 import { createToast } from "mosha-vue-toastify";
-import HoverUserList from '@/components/HoverUserList';
-import { getTimeAgo, formatDateTime } from '@/utils/timeUtils';
+import HoverUserList from "@/components/HoverUserList";
+import { getTimeAgo, formatDateTime } from "@/utils/timeUtils";
 
 export default {
   name: "PostDetail",
-  components: { 
-    ProfileImage, 
-    SyncLoader, 
-    Skeletor, 
-    PostDisplayName, 
-    LikeActionBar, 
+  components: {
+    ProfileImage,
+    SyncLoader,
+    Skeletor,
+    PostDisplayName,
+    LikeActionBar,
     ReactionsSummary,
-    HoverUserList 
+    HoverUserList,
   },
   props: {
     id: {
-      required: true
+      required: true,
     },
     commentId: {
       type: String,
-      default: null
+      default: null,
     },
     scrollToComment: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   data() {
     return {
@@ -234,10 +241,10 @@ export default {
   async created() {
     console.log("PostDetail created with ID:", this.id);
     try {
-  this.$store.dispatch("loadUser");
+      this.$store.dispatch("loadUser");
       this.user = this.$store.state.user;
 
-  // Không gọi loadPostData ở đây vì đã có trong watch
+      // Không gọi loadPostData ở đây vì đã có trong watch
     } catch (error) {
       console.error("Error in created hook:", error);
     }
@@ -260,30 +267,31 @@ export default {
     }
   },
   methods: {
-  async loadPostData() {
+    async loadPostData() {
       this.isSkeletorLoading = true;
-      
+
       // Debug ID trước khi gọi API
       console.log("Raw ID:", this.id);
       console.log("ID type:", typeof this.id);
       console.log("ID stringified:", JSON.stringify(this.id));
-      
+
       // Ensure ID is string
       const postId = String(this.id);
       console.log("Converted postId:", postId);
 
-    try {
-  const { getPost, getPostComments, getReactionStatus, getLikesCount } = await import('@/api/posts');
+      try {
+        const { getPost, getPostComments, getReactionStatus, getLikesCount } =
+          await import("@/api/posts");
 
         console.log("Calling getPost API with postId:", postId);
         const responsePost = await getPost(postId);
         console.log("API response status:", responsePost.status);
         console.log("Full API response:", responsePost);
-        
+
         if (responsePost.status === 200) {
           this.posts = responsePost.data;
           console.log("Post data loaded:", this.posts);
-          
+
           if (!this.posts || !this.posts._id) {
             console.error("Post data is null or missing _id:", this.posts);
           }
@@ -291,12 +299,17 @@ export default {
           const currentUserId = this.$store?.state?.user?._id;
           if (currentUserId) {
             try {
-              const reactionStatus = await getReactionStatus(postId, currentUserId);
+              const reactionStatus = await getReactionStatus(
+                postId,
+                currentUserId
+              );
               if (reactionStatus.status === 200) {
                 this.userReaction = reactionStatus.data?.userReaction || null;
                 this.reactionsCount = reactionStatus.data?.reactionsCount || {};
                 this.isLiked = !!reactionStatus.data?.userReaction;
-                this.likesCount = reactionStatus.data?.likesCount ?? (this.posts?.likesCount || 0);
+                this.likesCount =
+                  reactionStatus.data?.likesCount ??
+                  (this.posts?.likesCount || 0);
               }
             } catch (e) {
               // Fallback nếu API phụ lỗi
@@ -310,9 +323,10 @@ export default {
           } else {
             try {
               const lc = await getLikesCount(postId);
-              this.likesCount = lc.status === 200 && typeof lc.data?.likesCount === 'number'
-                ? lc.data.likesCount
-                : (this.posts?.likesCount || 0);
+              this.likesCount =
+                lc.status === 200 && typeof lc.data?.likesCount === "number"
+                  ? lc.data.likesCount
+                  : this.posts?.likesCount || 0;
             } catch (_) {
               this.likesCount = this.posts?.likesCount || 0;
             }
@@ -325,7 +339,7 @@ export default {
         console.log("Loading comments for post ID:", postId);
         const responseComment = await getPostComments(postId);
         console.log("Comments API response:", responseComment);
-        
+
         if (responseComment.status === 200) {
           const allComments = responseComment.data || [];
           // Load first page of comments only
@@ -333,8 +347,13 @@ export default {
           this.hasMoreComments = allComments.length > this.commentsPerPage;
           this.allComments = allComments; // Store all for pagination
           this.commentsPage = 1;
-          console.log("Comments loaded:", this.comments.length, "of", allComments.length);
-          
+          console.log(
+            "Comments loaded:",
+            this.comments.length,
+            "of",
+            allComments.length
+          );
+
           // Setup intersection observer after comments loaded
           this.$nextTick(() => {
             this.setupIntersectionObserver();
@@ -344,25 +363,25 @@ export default {
           console.error("Comments response data:", responseComment.data);
         }
       } catch (error) {
-  console.error("Load post detail error:", error);
-  console.error("Error details:", error.response);
+        console.error("Load post detail error:", error);
+        console.error("Error details:", error.response);
       }
 
       this.isSkeletorLoading = false;
 
       // Scroll đến comment nếu có commentId và scrollToComment = true
-      console.log('PostDetail props:', {
+      console.log("PostDetail props:", {
         scrollToComment: this.scrollToComment,
         commentId: this.commentId,
-        id: this.id
+        id: this.id,
       });
-      
+
       if (this.scrollToComment && this.commentId) {
-        console.log('Scrolling to comment:', this.commentId);
-        
+        console.log("Scrolling to comment:", this.commentId);
+
         // Tự động mở tất cả comments trước khi scroll
         this.showAllComments = true;
-        
+
         // Đợi một chút để đảm bảo comments đã render xong
         setTimeout(() => {
           this.scrollToSpecificComment(this.commentId);
@@ -376,34 +395,34 @@ export default {
     },
     showReactorsModal(reactionType) {
       // TODO: Hiển thị modal danh sách người đã react với emoji này
-      console.log('Show reactors for reaction:', reactionType);
+      console.log("Show reactors for reaction:", reactionType);
       // Tạm thời emit để component cha xử lý
-      this.$emit('show-reactors', { postId: this.id, reactionType });
+      this.$emit("show-reactors", { postId: this.id, reactionType });
     },
     showAllReactorsModal() {
       // TODO: Hiển thị modal tất cả người đã react
-      console.log('Show all reactors for post:', this.id);
+      console.log("Show all reactors for post:", this.id);
       // Tạm thời emit để component cha xử lý
-      this.$emit('show-all-reactors', this.id);
+      this.$emit("show-all-reactors", this.id);
     },
 
     toggleAllComments() {
       this.showAllComments = !this.showAllComments;
     },
-    
+
     loadMoreComments() {
       if (this.loadingMoreComments || !this.hasMoreComments) {
         return;
       }
-      
+
       this.loadingMoreComments = true;
-      
+
       // Simulate delay for loading
       setTimeout(() => {
         const startIndex = this.commentsPage * this.commentsPerPage;
         const endIndex = startIndex + this.commentsPerPage;
         const nextComments = this.allComments.slice(startIndex, endIndex);
-        
+
         if (nextComments.length > 0) {
           this.comments.push(...nextComments);
           this.commentsPage++;
@@ -411,32 +430,36 @@ export default {
         } else {
           this.hasMoreComments = false;
         }
-        
+
         this.loadingMoreComments = false;
       }, 300); // Small delay for better UX
     },
-    
+
     setupIntersectionObserver() {
       // Clean up existing observer
       if (this.commentsObserver) {
         this.commentsObserver.disconnect();
       }
-      
+
       // Setup new observer
       const options = {
         root: null,
-        rootMargin: '100px', // Trigger 100px before reaching the element
-        threshold: 0.1
+        rootMargin: "100px", // Trigger 100px before reaching the element
+        threshold: 0.1,
       };
-      
+
       this.commentsObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting && this.hasMoreComments && !this.loadingMoreComments) {
+        entries.forEach((entry) => {
+          if (
+            entry.isIntersecting &&
+            this.hasMoreComments &&
+            !this.loadingMoreComments
+          ) {
             this.loadMoreComments();
           }
         });
       }, options);
-      
+
       // Observe the trigger element
       this.$nextTick(() => {
         const trigger = this.$refs.loadMoreTrigger;
@@ -461,7 +484,9 @@ export default {
       this.fillError = false;
 
       try {
-        const { uploadPostFile, addComment: apiAddComment } = await import('@/api/posts');
+        const { uploadPostFile, addComment: apiAddComment } = await import(
+          "@/api/posts"
+        );
         // Nếu có file, upload file trước
         if (this.file) {
           const formData = new FormData();
@@ -492,9 +517,9 @@ export default {
           this.comments.unshift(data); // Add to beginning of displayed comments
 
           // Emit event to parent to update post commentsCount
-          this.$emit('comment-added', {
+          this.$emit("comment-added", {
             postId: postId,
-            newCommentsCount: this.allComments.length
+            newCommentsCount: this.allComments.length,
           });
 
           // Reset form
@@ -519,41 +544,44 @@ export default {
     },
     formatCompact(num) {
       const n = Number(num) || 0;
-      if (n >= 1000000000) return (n / 1000000000).toFixed(n % 1000000000 ? 1 : 0) + 'B';
-      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + 'M';
-      if (n >= 1000) return (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'K';
+      if (n >= 1000000000)
+        return (n / 1000000000).toFixed(n % 1000000000 ? 1 : 0) + "B";
+      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + "M";
+      if (n >= 1000) return (n / 1000).toFixed(n % 1000 ? 1 : 0) + "K";
       return String(n);
     },
     scrollToComments() {
       try {
-        const el = this.$el.querySelector('.comments-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const el = this.$el.querySelector(".comments-section");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (_) {}
     },
 
     scrollToSpecificComment(commentId) {
       try {
         // Tìm comment element bằng commentId
-        const commentEl = this.$el.querySelector(`[data-comment-id="${commentId}"]`);
+        const commentEl = this.$el.querySelector(
+          `[data-comment-id="${commentId}"]`
+        );
         if (commentEl) {
-          commentEl.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center',
-            inline: 'nearest'
+          commentEl.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "nearest",
           });
-          
+
           // Tìm phần nội dung comment để highlight
-          const commentContent = commentEl.querySelector('.comment__content');
+          const commentContent = commentEl.querySelector(".comment__content");
           if (commentContent) {
             // Highlight chỉ phần nội dung comment trong 3 giây
-            commentContent.classList.add('highlight-content');
-            
+            commentContent.classList.add("highlight-content");
+
             // Xóa highlight sau 1.5 giây
             setTimeout(() => {
-              commentContent.classList.remove('highlight-content');
+              commentContent.classList.remove("highlight-content");
             }, 1000);
           }
-          
+
           // Sau khi scroll xong, focus vào comment input để user có thể reply ngay
           setTimeout(() => {
             this.focusCommentInput();
@@ -566,7 +594,7 @@ export default {
           }, 500);
         }
       } catch (error) {
-        console.error('Error scrolling to comment:', error);
+        console.error("Error scrolling to comment:", error);
         // Fallback: scroll đến phần comments và focus input
         this.scrollToComments();
         setTimeout(() => {
@@ -586,8 +614,12 @@ export default {
 
 <style lang="scss" scoped>
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideDown {
@@ -607,7 +639,11 @@ export default {
   left: 0;
   right: 0;
   width: 100%;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
   backdrop-filter: blur(12px);
   border-radius: 18px 18px 0 0;
   box-shadow: 0 2px 12px rgba(102, 126, 234, 0.08);
@@ -727,7 +763,11 @@ export default {
 }
 
 .timeline__text-post:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.02) 0%, rgba(118, 75, 162, 0.02) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.02) 0%,
+    rgba(118, 75, 162, 0.02) 100%
+  );
 }
 
 /* Avatar trong phần main post: dùng cùng style với Timeline (40x40, tròn) */
@@ -791,7 +831,7 @@ export default {
 }
 
 .post-time::before {
-  content: '•';
+  content: "•";
   font-size: 0.625rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
@@ -832,7 +872,11 @@ export default {
   font-style: italic;
   padding: 2rem;
   text-align: center;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
   border-radius: 12px;
   border: 2px dashed rgba(102, 126, 234, 0.2);
 }
@@ -856,7 +900,11 @@ export default {
   box-sizing: border-box;
   padding: 1rem 1.25rem;
   align-items: flex-start;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.04) 0%,
+    rgba(118, 75, 162, 0.04) 100%
+  );
   border: 1px solid rgba(102, 126, 234, 0.1);
   border-radius: 18px;
   width: fit-content;
@@ -864,7 +912,11 @@ export default {
 }
 
 .comment__content:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   border-color: rgba(102, 126, 234, 0.2);
   transform: translateX(2px);
 }
@@ -1132,7 +1184,11 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
   backdrop-filter: blur(12px);
   box-shadow: 0 -2px 12px rgba(102, 126, 234, 0.1);
   margin: 0;
@@ -1151,7 +1207,7 @@ export default {
   margin-right: 0;
   border: 3px solid transparent;
   background: linear-gradient(white, white) padding-box,
-              linear-gradient(135deg, #667eea, #764ba2) border-box;
+    linear-gradient(135deg, #667eea, #764ba2) border-box;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
   transition: all 0.3s ease;
 }
@@ -1246,7 +1302,11 @@ export default {
 
 .attach-btn:hover {
   transform: scale(1.1);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.15) 0%,
+    rgba(118, 75, 162, 0.15) 100%
+  );
 }
 
 .attach-btn.active-upload {
@@ -1269,7 +1329,8 @@ export default {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -1332,7 +1393,11 @@ export default {
 }
 
 .view-more-btn {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   border: 2px solid rgba(102, 126, 234, 0.2);
   color: #667eea;
   font-weight: 600;
@@ -1355,7 +1420,11 @@ export default {
 
 /* Highlight comment effect - chỉ highlight nội dung comment, không highlight cả dòng */
 .comment__content.highlight-content {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.12) 0%,
+    rgba(118, 75, 162, 0.12) 100%
+  ) !important;
   border: 2px solid #667eea !important;
   border-radius: 18px !important;
   padding: 1rem 1.25rem !important;
@@ -1365,7 +1434,7 @@ export default {
 }
 
 .comment__content.highlight-content::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -2px;
   left: -2px;
@@ -1379,12 +1448,20 @@ export default {
 
 @keyframes highlight-fade {
   0% {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(102, 126, 234, 0.12) 0%,
+      rgba(118, 75, 162, 0.12) 100%
+    );
     border-color: #667eea;
     transform: scale(1.03);
   }
   40% {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(102, 126, 234, 0.12) 0%,
+      rgba(118, 75, 162, 0.12) 100%
+    );
     border-color: #667eea;
     transform: scale(1.03);
   }
@@ -1396,7 +1473,8 @@ export default {
 }
 
 @keyframes pulse-border {
-  0%, 40% {
+  0%,
+  40% {
     opacity: 1;
     transform: scale(1);
   }
@@ -1428,7 +1506,7 @@ export default {
 }
 
 .loading-more-comments::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 20px;
   height: 20px;
@@ -1440,7 +1518,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Invisible trigger for infinite scroll */

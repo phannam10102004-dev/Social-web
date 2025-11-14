@@ -1,74 +1,120 @@
 <template>
-<Teleport to="body">
-  <div v-if="openEditProfile" class="pe-overlay" @click.self="closeModal">
-    <div class="pe-modal" role="dialog" aria-modal="true" aria-labelledby="pe-title">
-      <div class="pe-header">
-        <h2 id="pe-title">Chỉnh sửa trang cá nhân</h2>
-        <button class="pe-close" @click="closeModal" aria-label="Đóng">&times;</button>
-      </div>
-      <form class="pe-body" @submit.prevent="editProfile">
-        <div v-if="isLoadingUserData" class="pe-loading">
-          <sync-loader :color="color" size="10" />
-          <span>Đang tải thông tin...</span>
-        </div>
-        <div class="pe-section pe-avatar-section">
-          <div class="pe-avatar-wrapper">
-            <img 
-              v-if="previewAvatar"
-              :src="previewAvatar" 
-              class="pe-avatar" 
-              alt="Avatar preview"
-            />
-            <img 
-              v-else-if="user.profilePicture"
-              :src="`http://localhost:3000/uploads/user/${user.profilePicture}`" 
-              class="pe-avatar" 
-              alt="Current avatar"
-              @error="handleImageError"
-            />
-            <img 
-              v-else
-              src="@/assets/defaultProfile.png" 
-              class="pe-avatar" 
-              alt="Default avatar"
-            />
-            <div class="pe-avatar-actions">
-              <button type="button" class="pe-btn-secondary" @click="triggerAvatar">Đổi ảnh đại diện</button>
-              <input ref="file" type="file" class="hidden-input" accept="image/*" @change="onFileChange" />
-            </div>
-          </div>
-        </div>
-        <div class="pe-section">
-          <label class="pe-field">
-            <span class="pe-field__label">Tên hiển thị</span>
-            <input type="text" v-model.trim="displayName" class="pe-input" maxlength="80" />
-          </label>
-          <label class="pe-field">
-            <span class="pe-field__label">Giới thiệu bản thân</span>
-            <textarea v-model.trim="description" class="pe-textarea" rows="3" maxlength="300" />
-            <div class="pe-counter">{{ description.length }}/300</div>
-          </label>
-          <label class="pe-field">
-            <span class="pe-field__label">Sở thích</span>
-            <input type="text" v-model.trim="hobbies" class="pe-input" maxlength="120" />
-          </label>
-          <label class="pe-field inline">
-            <span class="pe-field__label">Ngày sinh</span>
-            <input type="date" v-model="birthDate" class="pe-input date" />
-          </label>
-        </div>
-        <div v-if="fillError" class="pe-error">Vui lòng điền đầy đủ các trường bắt buộc.</div>
-        <div class="pe-footer">
-          <button type="button" class="pe-btn pe-btn-ghost" @click="closeModal">Hủy</button>
-          <button type="submit" class="pe-btn pe-btn-primary" :disabled="isLoading || !canSave">
-            <span v-if="!isLoading">Lưu thay đổi</span>
-            <sync-loader v-else :color="color" size="8" />
+  <Teleport to="body">
+    <div v-if="openEditProfile" class="pe-overlay" @click.self="closeModal">
+      <div
+        class="pe-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pe-title"
+      >
+        <div class="pe-header">
+          <h2 id="pe-title">Chỉnh sửa trang cá nhân</h2>
+          <button class="pe-close" @click="closeModal" aria-label="Đóng">
+            &times;
           </button>
         </div>
-      </form>
+        <form class="pe-body" @submit.prevent="editProfile">
+          <div v-if="isLoadingUserData" class="pe-loading">
+            <sync-loader :color="color" size="10" />
+            <span>Đang tải thông tin...</span>
+          </div>
+          <div class="pe-section pe-avatar-section">
+            <div class="pe-avatar-wrapper">
+              <img
+                v-if="previewAvatar"
+                :src="previewAvatar"
+                class="pe-avatar"
+                alt="Avatar preview"
+              />
+              <img
+                v-else-if="user.profilePicture"
+                :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                class="pe-avatar"
+                alt="Current avatar"
+                @error="handleImageError"
+              />
+              <img
+                v-else
+                src="@/assets/defaultProfile.png"
+                class="pe-avatar"
+                alt="Default avatar"
+              />
+              <div class="pe-avatar-actions">
+                <button
+                  type="button"
+                  class="pe-btn-secondary"
+                  @click="triggerAvatar"
+                >
+                  Đổi ảnh đại diện
+                </button>
+                <input
+                  ref="file"
+                  type="file"
+                  class="hidden-input"
+                  accept="image/*"
+                  @change="onFileChange"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="pe-section">
+            <label class="pe-field">
+              <span class="pe-field__label">Tên hiển thị</span>
+              <input
+                type="text"
+                v-model.trim="displayName"
+                class="pe-input"
+                maxlength="80"
+              />
+            </label>
+            <label class="pe-field">
+              <span class="pe-field__label">Giới thiệu bản thân</span>
+              <textarea
+                v-model.trim="description"
+                class="pe-textarea"
+                rows="3"
+                maxlength="300"
+              />
+              <div class="pe-counter">{{ description.length }}/300</div>
+            </label>
+            <label class="pe-field">
+              <span class="pe-field__label">Sở thích</span>
+              <input
+                type="text"
+                v-model.trim="hobbies"
+                class="pe-input"
+                maxlength="120"
+              />
+            </label>
+            <label class="pe-field inline">
+              <span class="pe-field__label">Ngày sinh</span>
+              <input type="date" v-model="birthDate" class="pe-input date" />
+            </label>
+          </div>
+          <div v-if="fillError" class="pe-error">
+            Vui lòng điền đầy đủ các trường bắt buộc.
+          </div>
+          <div class="pe-footer">
+            <button
+              type="button"
+              class="pe-btn pe-btn-ghost"
+              @click="closeModal"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              class="pe-btn pe-btn-primary"
+              :disabled="isLoading || !canSave"
+            >
+              <span v-if="!isLoading">Lưu thay đổi</span>
+              <sync-loader v-else :color="color" size="8" />
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
-</Teleport>
+  </Teleport>
 </template>
 
 <script>
@@ -107,13 +153,18 @@ export default {
       return (this.displayName || this.user?.displayName || "?")
         .split(/\s+/)
         .filter(Boolean)
-        .slice(0,2)
-        .map(p=>p[0].toUpperCase())
+        .slice(0, 2)
+        .map((p) => p[0].toUpperCase())
         .join("");
     },
     canSave() {
-      return !!this.displayName && !!this.description && !!this.birthDate && !!this.hobbies;
-    }
+      return (
+        !!this.displayName &&
+        !!this.description &&
+        !!this.birthDate &&
+        !!this.hobbies
+      );
+    },
   },
   async mounted() {
     await this.loadUserData();
@@ -124,94 +175,105 @@ export default {
   },
   methods: {
     async loadUserData() {
-      console.log('Loading current user data for edit');
+      console.log("Loading current user data for edit");
       this.isLoadingUserData = true;
       try {
         // Chỉ load thông tin của current user
         await this.$store.dispatch("loadUser");
         await this.$nextTick();
-        
+
         const user = this.$store.state.user || {};
-        this.displayName = user.displayName || '';
-        this.description = user.description || '';
-        this.birthDate = user.birthDate || '';
-        this.hobbies = user.hobbies || '';
-        
-        console.log('Loaded current user data:', user);
+        this.displayName = user.displayName || "";
+        this.description = user.description || "";
+        this.birthDate = user.birthDate || "";
+        this.hobbies = user.hobbies || "";
+
+        console.log("Loaded current user data:", user);
       } catch (error) {
-        console.error('Error loading user data:', error);
-        
+        console.error("Error loading user data:", error);
+
         // Fallback: thử load từ store
         const user = this.$store.state.user || {};
-        this.displayName = user.displayName || '';
-        this.description = user.description || '';
-        this.birthDate = user.birthDate || '';
-        this.hobbies = user.hobbies || '';
+        this.displayName = user.displayName || "";
+        this.description = user.description || "";
+        this.birthDate = user.birthDate || "";
+        this.hobbies = user.hobbies || "";
       } finally {
         this.isLoadingUserData = false;
       }
     },
     handleImageError(event) {
-      console.log('Image load error, using default profile');
-      event.target.src = require('@/assets/defaultProfile.png');
+      console.log("Image load error, using default profile");
+      event.target.src = require("@/assets/defaultProfile.png");
     },
-    triggerAvatar() { this.$refs.file && this.$refs.file.click(); },
+    triggerAvatar() {
+      this.$refs.file && this.$refs.file.click();
+    },
     onFileChange() {
       const file = this.$refs.file.files[0];
       this.file = file;
       if (file) {
         const reader = new FileReader();
-        reader.onload = e => { this.previewAvatar = e.target.result; };
+        reader.onload = (e) => {
+          this.previewAvatar = e.target.result;
+        };
         reader.readAsDataURL(file);
       }
     },
-    closeModal() { this.openEditProfile = false; },
+    closeModal() {
+      this.openEditProfile = false;
+    },
     lockScroll() {
-      if (typeof window === 'undefined') return;
+      if (typeof window === "undefined") return;
       this.savedScrollY = window.scrollY || 0;
       const body = document.body;
       if (body.dataset.modalLocked) return; // prevent duplicate
-      body.dataset.modalLocked = 'true';
-      body.style.position = 'fixed';
+      body.dataset.modalLocked = "true";
+      body.style.position = "fixed";
       body.style.top = `-${this.savedScrollY}px`;
-      body.style.left = '0';
-      body.style.right = '0';
-      body.style.width = '100%';
-      body.style.overflow = 'hidden';
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+      body.style.overflow = "hidden";
     },
     unlockScroll() {
-      if (typeof window === 'undefined') return;
+      if (typeof window === "undefined") return;
       const body = document.body;
       if (!body.dataset.modalLocked) return;
-      body.style.position = '';
-      body.style.top = '';
-      body.style.left = '';
-      body.style.right = '';
-      body.style.width = '';
-      body.style.overflow = '';
+      body.style.position = "";
+      body.style.top = "";
+      body.style.left = "";
+      body.style.right = "";
+      body.style.width = "";
+      body.style.overflow = "";
       delete body.dataset.modalLocked;
       window.scrollTo(0, this.savedScrollY || 0);
     },
     async editProfile() {
       // Chỉ cho phép chỉnh sửa thông tin của chính mình
       const currentUserId = this.$store.state.user?._id;
-      
+
       if (!currentUserId) {
-        console.error('No current user found');
+        console.error("No current user found");
         return;
       }
 
       const formData = new FormData();
       formData.append("file", this.file);
 
-      if (!this.displayName || !this.description || !this.birthDate || !this.hobbies) {
+      if (
+        !this.displayName ||
+        !this.description ||
+        !this.birthDate ||
+        !this.hobbies
+      ) {
         this.fillError = true;
       } else {
         this.isLoading = true;
 
         try {
-          const axios = (await import('@/utils/axios')).default;
-          
+          const axios = (await import("@/utils/axios")).default;
+
           // Chuẩn bị dữ liệu để cập nhật
           const updateData = {
             displayName: this.displayName,
@@ -219,25 +281,29 @@ export default {
             birthDate: this.birthDate,
             hobbies: this.hobbies,
           };
-          
+
           // Chỉ thêm profilePicture nếu có file mới
           if (this.file) {
             updateData.profilePicture = this.file.name;
-            console.log('Updating with new profile picture:', this.file.name);
+            console.log("Updating with new profile picture:", this.file.name);
           } else {
-            console.log('No new profile picture, keeping existing avatar');
+            console.log("No new profile picture, keeping existing avatar");
           }
-          
-          const responseUser = await axios.put(`/users/${currentUserId}/edit`, updateData, {
-            withCredentials: true,
-          });
+
+          const responseUser = await axios.put(
+            `/users/${currentUserId}/edit`,
+            updateData,
+            {
+              withCredentials: true,
+            }
+          );
 
           if (responseUser.status === 200) {
             // Chỉ upload file nếu có file mới
             if (this.file) {
-              await axios.post('/auth/upload', formData, {
+              await axios.post("/auth/upload", formData, {
                 withCredentials: true,
-                headers: { 'Content-Type': 'multipart/form-data' },
+                headers: { "Content-Type": "multipart/form-data" },
               });
             }
 
@@ -247,26 +313,29 @@ export default {
 
             if (getUser.status === 200) {
               const userData = getUser.data;
-              
+
               // Nếu response không có profilePicture nhưng user có ảnh, preserve nó
               if (!userData.profilePicture && this.user.profilePicture) {
                 userData.profilePicture = this.user.profilePicture;
-                console.log('Preserved profilePicture:', userData.profilePicture);
+                console.log(
+                  "Preserved profilePicture:",
+                  userData.profilePicture
+                );
               }
-              
+
               this.$emit("updateUser", userData);
-              
+
               // Cập nhật store với thông tin mới
               this.$store.commit("SET_USER", userData);
-              
+
               // Cập nhật avatar trong store nếu có thay đổi file ảnh
               if (this.file && userData.profilePicture) {
                 await this.$store.dispatch("updateUserAvatar", {
                   userId: currentUserId,
-                  profilePicture: userData.profilePicture
+                  profilePicture: userData.profilePicture,
                 });
               }
-              
+
               this.openEditProfile = false; // Đóng modal sau khi lưu thành công
               this.editingSuccess = "Your profile was successfully edited!";
               createToast(
@@ -302,79 +371,86 @@ export default {
     user: {
       handler(newUser) {
         if (newUser && Object.keys(newUser).length > 0) {
-          this.displayName = newUser.displayName || '';
-          this.description = newUser.description || '';
-          this.birthDate = newUser.birthDate || '';
-          this.hobbies = newUser.hobbies || '';
+          this.displayName = newUser.displayName || "";
+          this.description = newUser.description || "";
+          this.birthDate = newUser.birthDate || "";
+          this.hobbies = newUser.hobbies || "";
         }
       },
       deep: true,
-      immediate: false
-    }
+      immediate: false,
+    },
   },
   mounted() {
     if (this.openEditProfile) this.lockScroll();
   },
   beforeUnmount() {
     this.unlockScroll();
-  }
+  },
 };
 </script>
 
 <style lang="scss" scoped>
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(30px) scale(0.95);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
 
-.pe-overlay { 
-  position: fixed; 
-  inset: 0; 
+.pe-overlay {
+  position: fixed;
+  inset: 0;
   background: rgba(17, 24, 39, 0.8);
   backdrop-filter: blur(8px);
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  padding: 100px 24px 70px; 
-  z-index: 999999; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 24px 70px;
+  z-index: 999999;
   overflow: hidden;
   animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.pe-modal { 
-  width: 100%; 
-  max-width: 680px; 
+.pe-modal {
+  width: 100%;
+  max-width: 680px;
   background: #ffffff;
   border-radius: 18px;
-  box-shadow: 
-    0 25px 50px -12px rgba(102, 126, 234, 0.25),
+  box-shadow: 0 25px 50px -12px rgba(102, 126, 234, 0.25),
     0 0 0 1px rgba(102, 126, 234, 0.1);
-  display: flex; 
-  flex-direction: column; 
+  display: flex;
+  flex-direction: column;
   max-height: calc(100vh - 120px);
   animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
 }
 
-.pe-header { 
-  position: relative; 
+.pe-header {
+  position: relative;
   padding: 1.5rem 4rem 1.5rem 1.5rem;
   border-bottom: 1px solid rgba(102, 126, 234, 0.1);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
 }
 
-.pe-header h2 { 
+.pe-header h2 {
   font-size: 1.375rem;
   font-weight: 700;
   margin: 0;
@@ -386,10 +462,10 @@ export default {
   letter-spacing: -0.02em;
 }
 
-.pe-close { 
-  position: absolute; 
+.pe-close {
+  position: absolute;
   right: 1.25rem;
-  top: 50%; 
+  top: 50%;
   transform: translateY(-50%);
   width: 40px;
   height: 40px;
@@ -407,13 +483,13 @@ export default {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.pe-close:hover { 
+.pe-close:hover {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   transform: translateY(-50%) rotate(90deg) scale(1.05);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
-.pe-body { 
+.pe-body {
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem 2rem 1.75rem;
@@ -441,29 +517,33 @@ export default {
   background: rgba(102, 126, 234, 0.5);
 }
 
-.pe-section { 
+.pe-section {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
 }
 
-.pe-avatar-section { 
+.pe-avatar-section {
   border-bottom: 1px solid rgba(102, 126, 234, 0.1);
   padding-bottom: 1.5rem;
 }
 
-.pe-avatar-wrapper { 
+.pe-avatar-wrapper {
   display: flex;
   align-items: center;
   gap: 1.25rem;
 }
 
-.pe-avatar { 
+.pe-avatar {
   width: 80px;
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.1) 0%,
+    rgba(118, 75, 162, 0.1) 100%
+  );
   border: 4px solid transparent;
   background-clip: padding-box;
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
@@ -473,7 +553,7 @@ export default {
 }
 
 .pe-avatar::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -4px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -486,7 +566,7 @@ export default {
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
 }
 
-.pe-avatar.placeholder { 
+.pe-avatar.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -496,27 +576,27 @@ export default {
   color: white;
 }
 
-.pe-avatar-actions { 
+.pe-avatar-actions {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
 }
 
-.hidden-input { 
+.hidden-input {
   display: none;
 }
-.pe-field { 
+.pe-field {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   position: relative;
 }
 
-.pe-field.inline { 
+.pe-field.inline {
   max-width: 300px;
 }
 
-.pe-field__label { 
+.pe-field__label {
   font-size: 0.875rem;
   font-weight: 600;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -526,7 +606,8 @@ export default {
   letter-spacing: -0.01em;
 }
 
-.pe-input, .pe-textarea { 
+.pe-input,
+.pe-textarea {
   width: 100%;
   border: 2px solid rgba(102, 126, 234, 0.15);
   border-radius: 12px;
@@ -539,7 +620,8 @@ export default {
   color: #1f2937;
 }
 
-.pe-input:focus, .pe-textarea:focus { 
+.pe-input:focus,
+.pe-textarea:focus {
   outline: none;
   border-color: #667eea;
   background: white;
@@ -547,12 +629,12 @@ export default {
   transform: translateY(-1px);
 }
 
-.pe-textarea { 
+.pe-textarea {
   min-height: 90px;
   line-height: 1.5;
 }
 
-.pe-counter { 
+.pe-counter {
   position: absolute;
   right: 0.75rem;
   bottom: 0.75rem;
@@ -563,16 +645,20 @@ export default {
   border-radius: 6px;
   font-weight: 500;
 }
-.pe-footer { 
+.pe-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.875rem;
   padding: 1.25rem 2rem;
   border-top: 1px solid rgba(102, 126, 234, 0.1);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
 }
 
-.pe-btn { 
+.pe-btn {
   border: none;
   border-radius: 12px;
   padding: 0.75rem 1.75rem;
@@ -589,7 +675,7 @@ export default {
   height: 44px;
 }
 
-.pe-btn-primary { 
+.pe-btn-primary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
@@ -598,7 +684,7 @@ export default {
 }
 
 .pe-btn-primary::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
@@ -606,7 +692,7 @@ export default {
   transition: opacity 0.3s ease;
 }
 
-.pe-btn-primary:disabled { 
+.pe-btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
@@ -621,21 +707,25 @@ export default {
   opacity: 1;
 }
 
-.pe-btn-ghost { 
+.pe-btn-ghost {
   background: white;
   color: #667eea;
   border: 2px solid rgba(102, 126, 234, 0.2);
 }
 
-.pe-btn-ghost:hover { 
+.pe-btn-ghost:hover {
   background: rgba(102, 126, 234, 0.05);
   border-color: #667eea;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
-.pe-btn-secondary { 
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+.pe-btn-secondary {
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.1) 0%,
+    rgba(118, 75, 162, 0.1) 100%
+  );
   color: #667eea;
   border: none;
   padding: 0.625rem 1.25rem;
@@ -646,15 +736,19 @@ export default {
   transition: all 0.3s ease;
 }
 
-.pe-btn-secondary:hover { 
+.pe-btn-secondary:hover {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
 }
 
-.pe-error { 
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.08) 100%);
+.pe-error {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.08) 0%,
+    rgba(220, 38, 38, 0.08) 100%
+  );
   color: #ef4444;
   border: 2px solid rgba(239, 68, 68, 0.2);
   padding: 0.875rem 1rem;
@@ -667,11 +761,11 @@ export default {
 }
 
 .pe-error::before {
-  content: '⚠️';
+  content: "⚠️";
   font-size: 1.125rem;
 }
 
-.pe-loading { 
+.pe-loading {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -681,7 +775,21 @@ export default {
   font-size: 0.9375rem;
   font-weight: 500;
 }
-@media (max-width: 720px) { .pe-modal { max-width:100%; max-height:calc(100vh - 40px); } .pe-header { padding:14px 48px 10px; } .pe-body { padding:16px 20px 24px; } .pe-overlay { padding:0 12px; } }
+@media (max-width: 720px) {
+  .pe-modal {
+    max-width: 100%;
+    max-height: calc(100vh - 40px);
+  }
+  .pe-header {
+    padding: 14px 48px 10px;
+  }
+  .pe-body {
+    padding: 16px 20px 24px;
+  }
+  .pe-overlay {
+    padding: 0 12px;
+  }
+}
 
 @media (max-width: 480px) {
   .pe-modal {
@@ -750,7 +858,7 @@ export default {
     font-size: 0.8125rem;
     padding: 0.75rem 0.875rem;
   }
-  
+
   .pe-footer {
     padding: 1rem 1.25rem;
     gap: 0.75rem;

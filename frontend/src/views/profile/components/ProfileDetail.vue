@@ -19,7 +19,7 @@
           <img
             class="image-post__img"
             v-if="user.profilePicture"
-            :src="`http://localhost:3000/uploads/user/${user.profilePicture}`"
+            :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
           />
           <img
             v-else
@@ -32,7 +32,11 @@
             <div class="detail__user-top">
               <div class="user-name-wrapper">
                 <a class="user-top__name">{{ user.displayName }}</a>
-                <span v-if="user.isPrivate && !currentUser" class="private-badge" title="Tài khoản riêng tư">
+                <span
+                  v-if="user.isPrivate && !currentUser"
+                  class="private-badge"
+                  title="Tài khoản riêng tư"
+                >
                   🔒
                 </span>
               </div>
@@ -41,20 +45,35 @@
                 <span>{{ user.birthDate }}</span>
               </div>
               <div class="user-follow">
-                <div class="user-top__birth follower-count" @click="showFollowersModal = true">
+                <div
+                  class="user-top__birth follower-count"
+                  @click="showFollowersModal = true"
+                >
                   <a>Người theo dõi:</a>
                   <span>{{ followers }}</span>
                 </div>
-                <div class="user-top__birth following-count" @click="showFollowingModal = true">
+                <div
+                  class="user-top__birth following-count"
+                  @click="showFollowingModal = true"
+                >
                   <a>Đang theo dõi:</a>
                   <span>{{ following }}</span>
                 </div>
                 <div class="user-functions" v-if="!currentUser">
                   <div class="user-function-buttons">
                     <!-- Nếu tài khoản riêng tư và chưa follow -->
-                    <div class="user-top__birth" v-if="user.isPrivate && !isFollowing && !hasPendingRequest">
+                    <div
+                      class="user-top__birth"
+                      v-if="
+                        user.isPrivate && !isFollowing && !hasPendingRequest
+                      "
+                    >
                       <div class="add-button-wrapper" v-if="!followLoading">
-                        <button class="btn btnFollow" id="btnFollow" @click="sendFollowRequest">
+                        <button
+                          class="btn btnFollow"
+                          id="btnFollow"
+                          @click="sendFollowRequest"
+                        >
                           Gửi yêu cầu
                         </button>
                       </div>
@@ -65,7 +84,10 @@
                     <!-- Nếu đã gửi yêu cầu và đang chờ -->
                     <div class="user-top__birth" v-else-if="hasPendingRequest">
                       <div class="add-button-wrapper" v-if="!followLoading">
-                        <button class="btn btn-pending" @click="cancelFollowRequest">
+                        <button
+                          class="btn btn-pending"
+                          @click="cancelFollowRequest"
+                        >
                           Đã gửi yêu cầu
                         </button>
                       </div>
@@ -76,7 +98,11 @@
                     <!-- Nếu tài khoản công khai và chưa follow -->
                     <div class="user-top__birth" v-else-if="!isFollowing">
                       <div class="add-button-wrapper" v-if="!followLoading">
-                        <button class="btn btnFollow" id="btnFollow" @click="followUser">
+                        <button
+                          class="btn btnFollow"
+                          id="btnFollow"
+                          @click="followUser"
+                        >
                           Theo dõi
                         </button>
                       </div>
@@ -134,20 +160,17 @@
       </div>
       <div class="profile-posts">
         <h3>Bài đăng</h3>
-        <ProfileUserPosts 
-          ref="profileUserPosts" 
-          :id="id" 
+        <ProfileUserPosts
+          ref="profileUserPosts"
+          :id="id"
           :is-private="user.isPrivate"
           :is-following="isFollowing"
           :is-current-user="currentUser"
-          @show-post-detail="$emit('show-post-detail', $event)" 
+          @show-post-detail="$emit('show-post-detail', $event)"
         />
       </div>
-      <ProfileEdit
-        @updateUser="updateUser($event)"
-        v-if="openEditProfile"
-      />
-      
+      <ProfileEdit @updateUser="updateUser($event)" v-if="openEditProfile" />
+
       <!-- Modal Người theo dõi -->
       <UserListModal
         v-if="showFollowersModal"
@@ -156,7 +179,7 @@
         @close="showFollowersModal = false"
         @follow-updated="handleFollowUpdate"
       />
-      
+
       <!-- Modal Đang theo dõi -->
       <UserListModal
         v-if="showFollowingModal"
@@ -179,7 +202,13 @@ import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 export default {
   name: "ProfileDetail",
   props: ["id"],
-  components: { ProfileUserPosts, Skeletor, SyncLoader, ProfileEdit, UserListModal },
+  components: {
+    ProfileUserPosts,
+    Skeletor,
+    SyncLoader,
+    ProfileEdit,
+    UserListModal,
+  },
   data() {
     return {
       user: [],
@@ -208,11 +237,17 @@ export default {
       immediate: false, // Đã gọi trong created()
     },
     // Watch route để reload khi navigate đến cùng profile (ví dụ: từ notification)
-    '$route'(to, from) {
+    $route(to, from) {
       // Chỉ reload nếu đang ở profile page và params ID giống nhau
       // (nghĩa là click vào notification của cùng user đang xem)
-      if (to.name === from.name && to.params.id === from.params.id && to.params.id === this.id) {
-        console.log('🔄 Reloading profile data due to route change (same profile)');
+      if (
+        to.name === from.name &&
+        to.params.id === from.params.id &&
+        to.params.id === this.id
+      ) {
+        console.log(
+          "🔄 Reloading profile data due to route change (same profile)"
+        );
         this.loadProfileData();
       }
     },
@@ -227,16 +262,16 @@ export default {
       this.currentUser = false;
       this.hasPendingRequest = false;
       this.pendingRequestId = null;
-      
+
       try {
-  // Đảm bảo loadUser hoàn thành trước
-  await this.$store.dispatch("loadUser");
+        // Đảm bảo loadUser hoàn thành trước
+        await this.$store.dispatch("loadUser");
         const currentUser = this.$store.state.user?._id;
 
-          const { getUser } = await import('@/api/users');
-          const response = await getUser(this.id);
-          if (response.status === 200) {
-            const userData = response.data;
+        const { getUser } = await import("@/api/users");
+        const response = await getUser(this.id);
+        if (response.status === 200) {
+          const userData = response.data;
           // Kiểm tra xem có phải là profile của chính mình không
           this.currentUser = currentUser === userData._id;
           this.user = userData;
@@ -245,22 +280,22 @@ export default {
           this.isFollowing = currentUser
             ? userData.followers?.includes(currentUser)
             : false;
-          
-          console.log('📊 Profile Data Loaded:', {
+
+          console.log("📊 Profile Data Loaded:", {
             profileUserId: this.id,
             currentUserId: currentUser,
             followers: userData.followers,
             isFollowing: this.isFollowing,
-            followersCount: this.followers
+            followersCount: this.followers,
           });
-          
+
           // Kiểm tra xem có yêu cầu pending không (nếu là tài khoản riêng tư)
           if (userData.isPrivate && !this.currentUser && !this.isFollowing) {
             await this.checkPendingRequest(currentUser);
           }
         }
       } catch (error) {
-  console.error("Load user error:", error);
+        console.error("Load user error:", error);
       }
 
       this.isSkeletorLoading = false;
@@ -270,23 +305,26 @@ export default {
 
       try {
         const currentUser = this.$store.state.user._id;
-        const { followUser } = await import('@/api/users');
-        
+        const { followUser } = await import("@/api/users");
+
         // Gửi yêu cầu theo dõi
         const responseFollow = await followUser(this.id, currentUser);
-        
+
         if (responseFollow.status === 200) {
           // Cập nhật UI ngay lập tức
           this.isFollowing = true;
           this.followers++;
-          
+
           // Cập nhật store thông qua action
-          await this.$store.dispatch("updateUserFollowing", { 
-            action: "follow", 
-            targetUserId: this.id 
+          await this.$store.dispatch("updateUserFollowing", {
+            action: "follow",
+            targetUserId: this.id,
           });
-          
-          console.log(`✅ Followed user ${this.id}, isFollowing now:`, this.isFollowing);
+
+          console.log(
+            `✅ Followed user ${this.id}, isFollowing now:`,
+            this.isFollowing
+          );
         }
       } catch (error) {
         console.error("Follow user error:", error);
@@ -297,75 +335,82 @@ export default {
 
       this.followLoading = false;
     },
-    
+
     async unFollowUser() {
-      console.log('🔴 Unfollow clicked, current followLoading:', this.followLoading);
-      
+      console.log(
+        "🔴 Unfollow clicked, current followLoading:",
+        this.followLoading
+      );
+
       if (this.followLoading) {
-        console.log('⚠️ Already processing, skipping...');
+        console.log("⚠️ Already processing, skipping...");
         return;
       }
-      
+
       this.followLoading = true;
 
       try {
         const currentUser = this.$store.state.user._id;
-        const { unfollowUser, getUser } = await import('@/api/users');
-        
-        console.log('📤 Sending unfollow request...');
-        
+        const { unfollowUser, getUser } = await import("@/api/users");
+
+        console.log("📤 Sending unfollow request...");
+
         // Gửi yêu cầu bỏ theo dõi
         const responseUnFollow = await unfollowUser(this.id, currentUser);
-        
-        console.log('📥 Unfollow response:', responseUnFollow.status);
-        
+
+        console.log("📥 Unfollow response:", responseUnFollow.status);
+
         if (responseUnFollow.status === 200) {
           // Đợi 500ms để backend hoàn tất việc xóa record
-          console.log('⏳ Waiting 500ms for backend...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
+          console.log("⏳ Waiting 500ms for backend...");
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
           // Reload data từ server để đồng bộ
-          console.log('🔄 Reloading user data...');
+          console.log("🔄 Reloading user data...");
           const userResponse = await getUser(this.id);
-          
+
           if (userResponse.status === 200) {
             const userData = userResponse.data;
-            
+
             // Cập nhật followers/followings count
             this.followers = userData.followers?.length || 0;
             this.following = userData.followings?.length || 0;
-            
+
             // Kiểm tra đúng: xem currentUser có trong danh sách followers của target user không
             // Hoặc xem target user có trong followings của current user không
-            const isCurrentUserInFollowers = userData.followers?.includes(currentUser) || false;
-            
-            console.log('🔍 Debug unfollow state:', {
+            const isCurrentUserInFollowers =
+              userData.followers?.includes(currentUser) || false;
+
+            console.log("🔍 Debug unfollow state:", {
               currentUser: currentUser,
               targetUser: this.id,
               targetUserFollowers: userData.followers,
-              isCurrentUserInFollowers: isCurrentUserInFollowers
+              isCurrentUserInFollowers: isCurrentUserInFollowers,
             });
-            
+
             // Nếu current user KHÔNG còn trong followers list của target user
             // thì isFollowing = false
             this.isFollowing = isCurrentUserInFollowers;
-            
-            console.log(`✅ Unfollowed user ${this.id}, verified from server:`, {
-              isFollowing: this.isFollowing,
-              followers: this.followers,
-              userFollowersList: userData.followers
-            });
+
+            console.log(
+              `✅ Unfollowed user ${this.id}, verified from server:`,
+              {
+                isFollowing: this.isFollowing,
+                followers: this.followers,
+                userFollowersList: userData.followers,
+              }
+            );
           }
-          
+
           // Cập nhật store thông qua action
-          await this.$store.dispatch("updateUserFollowing", { 
-            action: "unfollow", 
-            targetUserId: this.id 
+          await this.$store.dispatch("updateUserFollowing", {
+            action: "unfollow",
+            targetUserId: this.id,
           });
-          
+
           // Nếu là tài khoản riêng tư, kiểm tra xem có pending request không
           if (this.user.isPrivate) {
-            console.log('🔍 Checking pending request for private account...');
+            console.log("🔍 Checking pending request for private account...");
             await this.checkPendingRequest(currentUser);
           }
         }
@@ -373,105 +418,117 @@ export default {
         console.error("❌ Unfollow user error:", error);
       } finally {
         this.followLoading = false;
-        console.log('✅ Unfollow completed, followLoading set to false');
+        console.log("✅ Unfollow completed, followLoading set to false");
       }
     },
-    
+
     async sendFollowRequest() {
       this.followLoading = true;
-      
+
       try {
         const currentUserId = this.$store.state.user._id;
-        const followRequestsAPI = (await import('@/api/followRequests')).default;
-        
-        console.log('🔄 Sending follow request:', {
+        const followRequestsAPI = (await import("@/api/followRequests"))
+          .default;
+
+        console.log("🔄 Sending follow request:", {
           from: currentUserId,
           to: this.id,
           isPrivate: this.user.isPrivate,
-          isFollowing: this.isFollowing
+          isFollowing: this.isFollowing,
         });
-        
-        const response = await followRequestsAPI.sendFollowRequest(currentUserId, this.id);
-        
+
+        const response = await followRequestsAPI.sendFollowRequest(
+          currentUserId,
+          this.id
+        );
+
         if (response.status === 200) {
           this.hasPendingRequest = true;
           this.pendingRequestId = response.data.request._id;
-          
+
           // Hiển thị toast thông báo
-          const { createToast } = await import('mosha-vue-toastify');
-          createToast('Đã gửi yêu cầu theo dõi', {
-            type: 'success',
-            position: 'top-right',
-            timeout: 3000
+          const { createToast } = await import("mosha-vue-toastify");
+          createToast("Đã gửi yêu cầu theo dõi", {
+            type: "success",
+            position: "top-right",
+            timeout: 3000,
           });
         }
       } catch (error) {
         console.error("Send follow request error:", error);
         console.error("Error response:", error.response?.data);
         console.error("Error status:", error.response?.status);
-        
-        const { createToast } = await import('mosha-vue-toastify');
-        const errorMsg = error.response?.data || 'Không thể gửi yêu cầu';
+
+        const { createToast } = await import("mosha-vue-toastify");
+        const errorMsg = error.response?.data || "Không thể gửi yêu cầu";
         createToast(errorMsg, {
-          type: 'danger',
-          position: 'top-right',
-          timeout: 3000
+          type: "danger",
+          position: "top-right",
+          timeout: 3000,
         });
       }
-      
+
       this.followLoading = false;
     },
-    
+
     async cancelFollowRequest() {
       if (!this.pendingRequestId) return;
-      
+
       this.followLoading = true;
-      
+
       try {
         const currentUserId = this.$store.state.user._id;
-        const followRequestsAPI = (await import('@/api/followRequests')).default;
-        
-        const response = await followRequestsAPI.cancelFollowRequest(this.pendingRequestId, currentUserId);
-        
+        const followRequestsAPI = (await import("@/api/followRequests"))
+          .default;
+
+        const response = await followRequestsAPI.cancelFollowRequest(
+          this.pendingRequestId,
+          currentUserId
+        );
+
         if (response.status === 200) {
           this.hasPendingRequest = false;
           this.pendingRequestId = null;
-          
-          const { createToast } = await import('mosha-vue-toastify');
-          createToast('Đã hủy yêu cầu theo dõi', {
-            type: 'info',
-            position: 'top-right',
-            timeout: 3000
+
+          const { createToast } = await import("mosha-vue-toastify");
+          createToast("Đã hủy yêu cầu theo dõi", {
+            type: "info",
+            position: "top-right",
+            timeout: 3000,
           });
         }
       } catch (error) {
         console.error("Cancel follow request error:", error);
-        
-        const { createToast } = await import('mosha-vue-toastify');
-        createToast('Không thể hủy yêu cầu', {
-          type: 'danger',
-          position: 'top-right',
-          timeout: 3000
+
+        const { createToast } = await import("mosha-vue-toastify");
+        createToast("Không thể hủy yêu cầu", {
+          type: "danger",
+          position: "top-right",
+          timeout: 3000,
         });
       }
-      
+
       this.followLoading = false;
     },
-    
+
     async checkPendingRequest(currentUserId) {
       try {
-        const followRequestsAPI = (await import('@/api/followRequests')).default;
-        
-        const response = await followRequestsAPI.checkFollowRequest(currentUserId, this.id);
-        
+        const followRequestsAPI = (await import("@/api/followRequests"))
+          .default;
+
+        const response = await followRequestsAPI.checkFollowRequest(
+          currentUserId,
+          this.id
+        );
+
         if (response.status === 200 && response.data.exists) {
           this.hasPendingRequest = true;
           this.pendingRequestId = response.data.request._id;
-          console.log('✅ Found pending request:', response.data.request._id);
+          console.log("✅ Found pending request:", response.data.request._id);
         } else {
           this.hasPendingRequest = false;
           this.pendingRequestId = null;
-          console.log('✅ No pending request found');
+          console.log("✅ No pending request found");
         }
       } catch (error) {
         console.error("Check pending request error:", error);
@@ -480,86 +537,92 @@ export default {
         this.pendingRequestId = null;
       }
     },
-    
+
     async startConversation() {
       try {
-        console.log('Starting conversation with user:', this.id);
-        
+        console.log("Starting conversation with user:", this.id);
+
         // Import API để tạo conversation
-        const MessageAPI = (await import('@/api/messages')).default;
-        
+        const MessageAPI = (await import("@/api/messages")).default;
+
         // Tạo hoặc lấy conversation với user này
         const response = await MessageAPI.createOrGetConversation(this.id);
-        
+
         if (response && response.data) {
           const conversationId = response.data._id;
-          console.log('Conversation created/found:', conversationId);
-          
+          console.log("Conversation created/found:", conversationId);
+
           // Navigate đến message page với conversation cụ thể
           this.$router.push({
-            name: 'MessageDetail',
-            params: { id: conversationId }
+            name: "MessageDetail",
+            params: { id: conversationId },
           });
         } else {
           // Nếu không tạo được conversation, vẫn đi đến messages page
-          this.$router.push({ name: 'Messages' });
+          this.$router.push({ name: "Messages" });
         }
       } catch (error) {
         console.error("Start conversation error:", error);
-        
+
         // Fallback: đi đến messages page
-        this.$router.push({ name: 'Messages' });
+        this.$router.push({ name: "Messages" });
       }
     },
     updateUser(user) {
       this.user = user || [];
     },
-    
+
     handleFollowUpdate({ userId, following }) {
-      console.log(`Follow update: userId=${userId}, following=${following}, profile id=${this.id}`);
-      
+      console.log(
+        `Follow update: userId=${userId}, following=${following}, profile id=${this.id}`
+      );
+
       // Lấy thông tin người dùng hiện tại
       const currentUserId = this.$store.state.user?._id;
-      
+
       // TRƯỜNG HỢP 1: Nếu đây là profile của người khác và người hiện tại follow/unfollow họ
       if (userId === this.id) {
-        console.log(`Case 1: Current user is following/unfollowing this profile`);
-        
+        console.log(
+          `Case 1: Current user is following/unfollowing this profile`
+        );
+
         // Cập nhật trạng thái UI
         this.isFollowing = following;
-        
+
         // Cập nhật số lượng người theo dõi
         if (following) {
           this.followers++;
         } else {
           this.followers--;
         }
-        
+
         // Cập nhật store thông qua action
-        this.$store.dispatch("updateUserFollowing", { 
-          action: following ? "follow" : "unfollow", 
-          targetUserId: userId 
+        this.$store.dispatch("updateUserFollowing", {
+          action: following ? "follow" : "unfollow",
+          targetUserId: userId,
         });
       }
-      
+
       // TRƯỜNG HỢP 2: Nếu đây là profile của người dùng hiện tại và họ follow/unfollow người khác
       if (currentUserId === this.id) {
-        console.log(`Case 2: This is current user's profile and they are following/unfollowing someone else`);
-        
+        console.log(
+          `Case 2: This is current user's profile and they are following/unfollowing someone else`
+        );
+
         // Cập nhật số lượng đang theo dõi
         if (following) {
           this.following++;
         } else {
           this.following--;
         }
-        
+
         // Cập nhật store thông qua action
-        this.$store.dispatch("updateUserFollowing", { 
-          action: following ? "follow" : "unfollow", 
-          targetUserId: userId 
+        this.$store.dispatch("updateUserFollowing", {
+          action: following ? "follow" : "unfollow",
+          targetUserId: userId,
         });
       }
-      
+
       // Reload profile data để cập nhật danh sách nếu đang ở chế độ modal
       if (this.showFollowersModal || this.showFollowingModal) {
         // Reload profile data sau một khoảng thời gian ngắn để API kịp cập nhật
@@ -623,7 +686,7 @@ export default {
 }
 
 .profile-avatar::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: -2px;
   border-radius: var(--radius-full);
@@ -695,7 +758,8 @@ export default {
   font-weight: 500;
 }
 
-.follower-count, .following-count {
+.follower-count,
+.following-count {
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0.5rem 1rem;
@@ -703,8 +767,13 @@ export default {
   background: var(--gray-50);
 }
 
-.follower-count:hover, .following-count:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+.follower-count:hover,
+.following-count:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.1) 0%,
+    rgba(118, 75, 162, 0.1) 100%
+  );
   transform: translateY(-2px);
 }
 

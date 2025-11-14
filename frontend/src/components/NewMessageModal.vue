@@ -9,9 +9,9 @@
       <div class="modal-search">
         <label>Đến:</label>
         <div class="search-input-wrapper">
-          <input 
-            type="text" 
-            v-model="searchQuery" 
+          <input
+            type="text"
+            v-model="searchQuery"
             placeholder="Nhập tên người nhận..."
             @input="searchUsers"
             ref="searchInput"
@@ -20,23 +20,21 @@
       </div>
 
       <div class="selected-users" v-if="selectedUsers.length > 0">
-        <div 
-          v-for="user in selectedUsers" 
+        <div
+          v-for="user in selectedUsers"
           :key="user._id"
           class="selected-user-chip"
         >
-          <img 
-            v-if="user.profilePicture" 
-            :src="`http://localhost:3000/uploads/user/${user.profilePicture}`"
+          <img
+            v-if="user.profilePicture"
+            :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
             :alt="user.displayName"
           />
-          <img 
-            v-else 
-            src="@/assets/defaultProfile.png" 
-            alt="Avatar"
-          />
+          <img v-else src="@/assets/defaultProfile.png" alt="Avatar" />
           <span>{{ user.displayName || user.email }}</span>
-          <i class="material-icons remove-btn" @click="removeUser(user._id)">close</i>
+          <i class="material-icons remove-btn" @click="removeUser(user._id)"
+            >close</i
+          >
         </div>
       </div>
 
@@ -46,63 +44,76 @@
           <span>Đang tìm kiếm...</span>
         </div>
 
-        <div v-else-if="searchResults.length === 0 && searchQuery" class="empty-state">
+        <div
+          v-else-if="searchResults.length === 0 && searchQuery"
+          class="empty-state"
+        >
           <div class="empty-icon">🔍</div>
           <p>Không tìm thấy người dùng</p>
         </div>
 
         <div v-else-if="searchQuery" class="users-list">
-          <div 
-            v-for="user in searchResults" 
+          <div
+            v-for="user in searchResults"
             :key="user._id"
             class="user-item"
-            :class="{ 'selected': isUserSelected(user._id) }"
+            :class="{ selected: isUserSelected(user._id) }"
             @click="toggleUser(user)"
           >
-            <img 
-              v-if="user.profilePicture" 
-              :src="`http://localhost:3000/uploads/user/${user.profilePicture}`"
+            <img
+              v-if="user.profilePicture"
+              :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
               :alt="user.displayName"
               class="user-avatar"
             />
-            <img 
-              v-else 
-              src="@/assets/defaultProfile.png" 
+            <img
+              v-else
+              src="@/assets/defaultProfile.png"
               alt="Avatar"
               class="user-avatar"
             />
             <div class="user-info">
-              <span class="user-name">{{ user.displayName || user.email }}</span>
-              <span class="user-email" v-if="user.displayName">{{ user.email }}</span>
+              <span class="user-name">{{
+                user.displayName || user.email
+              }}</span>
+              <span class="user-email" v-if="user.displayName">{{
+                user.email
+              }}</span>
             </div>
-            <i v-if="isUserSelected(user._id)" class="material-icons check-icon">check_circle</i>
+            <i v-if="isUserSelected(user._id)" class="material-icons check-icon"
+              >check_circle</i
+            >
           </div>
         </div>
 
         <div v-else class="suggestions">
           <h4>Gợi ý</h4>
           <div class="users-list">
-            <div 
-              v-for="user in suggestedUsers" 
+            <div
+              v-for="user in suggestedUsers"
               :key="user._id"
               class="user-item"
               @click="toggleUser(user)"
             >
-              <img 
-                v-if="user.profilePicture" 
-                :src="`http://localhost:3000/uploads/user/${user.profilePicture}`"
+              <img
+                v-if="user.profilePicture"
+                :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
                 :alt="user.displayName"
                 class="user-avatar"
               />
-              <img 
-                v-else 
-                src="@/assets/defaultProfile.png" 
+              <img
+                v-else
+                src="@/assets/defaultProfile.png"
                 alt="Avatar"
                 class="user-avatar"
               />
               <div class="user-info">
-                <span class="user-name">{{ user.displayName || user.email }}</span>
-                <span class="user-email" v-if="user.displayName">{{ user.email }}</span>
+                <span class="user-name">{{
+                  user.displayName || user.email
+                }}</span>
+                <span class="user-email" v-if="user.displayName">{{
+                  user.email
+                }}</span>
               </div>
             </div>
           </div>
@@ -111,8 +122,8 @@
 
       <div class="modal-footer">
         <button class="btn-cancel" @click="$emit('close')">Hủy</button>
-        <button 
-          class="btn-create" 
+        <button
+          class="btn-create"
           :disabled="selectedUsers.length === 0"
           @click="createConversation"
         >
@@ -124,123 +135,125 @@
 </template>
 
 <script>
-import MessageAPI from '@/api/messages'
+import MessageAPI from "@/api/messages";
 
 export default {
-  name: 'NewMessageModal',
+  name: "NewMessageModal",
   data() {
     return {
-      searchQuery: '',
+      searchQuery: "",
       searchResults: [],
       suggestedUsers: [],
       selectedUsers: [],
       loading: false,
-      searchTimeout: null
-    }
+      searchTimeout: null,
+    };
   },
   mounted() {
-    this.$refs.searchInput?.focus()
-    this.loadSuggestedUsers()
+    this.$refs.searchInput?.focus();
+    this.loadSuggestedUsers();
   },
   methods: {
     async searchUsers() {
       if (!this.searchQuery || this.searchQuery.trim().length === 0) {
-        this.searchResults = []
-        return
+        this.searchResults = [];
+        return;
       }
 
       if (this.searchTimeout) {
-        clearTimeout(this.searchTimeout)
+        clearTimeout(this.searchTimeout);
       }
 
       this.searchTimeout = setTimeout(async () => {
-        this.loading = true
+        this.loading = true;
         try {
-          const { getAllUsers } = await import('@/api/users')
-          const response = await getAllUsers()
-          
+          const { getAllUsers } = await import("@/api/users");
+          const response = await getAllUsers();
+
           if (response.status === 200) {
-            const currentUserId = this.$store.state.user?._id
-            const query = this.searchQuery.toLowerCase().trim()
-            
+            const currentUserId = this.$store.state.user?._id;
+            const query = this.searchQuery.toLowerCase().trim();
+
             this.searchResults = response.data
-              .filter(user => {
+              .filter((user) => {
                 // Loại bỏ current user
-                if (user._id === currentUserId) return false
-                
-                const name = (user.displayName || '').toLowerCase()
-                const email = (user.email || '').toLowerCase()
-                
-                return name.includes(query) || email.includes(query)
+                if (user._id === currentUserId) return false;
+
+                const name = (user.displayName || "").toLowerCase();
+                const email = (user.email || "").toLowerCase();
+
+                return name.includes(query) || email.includes(query);
               })
-              .slice(0, 10)
+              .slice(0, 10);
           }
         } catch (error) {
-          console.error('Search users error:', error)
+          console.error("Search users error:", error);
         } finally {
-          this.loading = false
+          this.loading = false;
         }
-      }, 300)
+      }, 300);
     },
 
     async loadSuggestedUsers() {
       try {
-        const { getAllUsers } = await import('@/api/users')
-        const response = await getAllUsers()
-        
+        const { getAllUsers } = await import("@/api/users");
+        const response = await getAllUsers();
+
         if (response.status === 200) {
-          const currentUserId = this.$store.state.user?._id
+          const currentUserId = this.$store.state.user?._id;
           this.suggestedUsers = response.data
-            .filter(user => user._id !== currentUserId)
-            .slice(0, 8)
+            .filter((user) => user._id !== currentUserId)
+            .slice(0, 8);
         }
       } catch (error) {
-        console.error('Load suggested users error:', error)
+        console.error("Load suggested users error:", error);
       }
     },
 
     toggleUser(user) {
-      const index = this.selectedUsers.findIndex(u => u._id === user._id)
-      
+      const index = this.selectedUsers.findIndex((u) => u._id === user._id);
+
       if (index !== -1) {
-        this.selectedUsers.splice(index, 1)
+        this.selectedUsers.splice(index, 1);
       } else {
         // Chỉ cho phép chọn 1 người (như Facebook)
-        this.selectedUsers = [user]
+        this.selectedUsers = [user];
       }
     },
 
     removeUser(userId) {
-      this.selectedUsers = this.selectedUsers.filter(u => u._id !== userId)
+      this.selectedUsers = this.selectedUsers.filter((u) => u._id !== userId);
     },
 
     isUserSelected(userId) {
-      return this.selectedUsers.some(u => u._id === userId)
+      return this.selectedUsers.some((u) => u._id === userId);
     },
 
     async createConversation() {
-      if (this.selectedUsers.length === 0) return
+      if (this.selectedUsers.length === 0) return;
 
       try {
-        const targetUser = this.selectedUsers[0]
-        const response = await MessageAPI.createOrGetConversation(targetUser._id)
-        
+        const targetUser = this.selectedUsers[0];
+        const response = await MessageAPI.createOrGetConversation(
+          targetUser._id
+        );
+
         if (response.status === 200) {
           const conversation = {
             ...response.data,
-            participant: targetUser
-          }
-          
+            participant: targetUser,
+          };
+
           // Emit event để mở chat popup
-          this.$emit('open-chat', conversation)
-          this.$emit('close')
+          this.$emit("open-chat", conversation);
+          this.$emit("close");
         }
       } catch (error) {
-        console.error('Create conversation error:', error)
+        console.error("Create conversation error:", error);
       }
-    }
-  }
-}
+    },
+  },
+};
 </script>
 
 <style scoped>
@@ -342,7 +355,11 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0.625rem;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.1) 0%,
+    rgba(118, 75, 162, 0.1) 100%
+  );
   border-radius: 20px;
   border: 1px solid rgba(102, 126, 234, 0.3);
 }
@@ -413,7 +430,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-icon {
@@ -451,7 +470,11 @@ export default {
 }
 
 .user-item.selected {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
 }
 
 .user-avatar {

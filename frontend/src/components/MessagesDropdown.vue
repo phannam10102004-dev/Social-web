@@ -3,24 +3,36 @@
     <div v-if="isVisible" class="messages-dropdown" @click.stop>
       <div class="messages-header">
         <h3>Tin nhắn ({{ conversations.length }})</h3>
-          <div class="messages-actions">
-            <i class="material-icons action-icon" @click="showCreateGroupModal = true" title="Tạo nhóm chat">
-              group_add
-            </i>
-            <i class="material-icons action-icon" @click="showNewMessageModal = true" title="Tin nhắn mới">
-              edit
-            </i>
-            <i class="material-icons action-icon" @click="goToMessagesPage" title="Xem tất cả">
-              open_in_new
-            </i>
-          </div>
+        <div class="messages-actions">
+          <i
+            class="material-icons action-icon"
+            @click="showCreateGroupModal = true"
+            title="Tạo nhóm chat"
+          >
+            group_add
+          </i>
+          <i
+            class="material-icons action-icon"
+            @click="showNewMessageModal = true"
+            title="Tin nhắn mới"
+          >
+            edit
+          </i>
+          <i
+            class="material-icons action-icon"
+            @click="goToMessagesPage"
+            title="Xem tất cả"
+          >
+            open_in_new
+          </i>
         </div>
+      </div>
 
       <div class="messages-search">
         <i class="material-icons search-icon">search</i>
-        <input 
-          type="text" 
-          v-model="searchQuery" 
+        <input
+          type="text"
+          v-model="searchQuery"
           placeholder="Tìm kiếm tin nhắn"
           @input="handleSearch"
         />
@@ -29,63 +41,103 @@
       <div class="messages-list" v-if="!loading">
         <div v-if="filteredConversations.length === 0" class="empty-state">
           <div class="empty-icon">💬</div>
-          <p class="empty-text">{{ searchQuery ? 'Không tìm thấy cuộc trò chuyện' : 'Chưa có tin nhắn nào' }}</p>
-          <button v-if="!searchQuery" class="btn-primary" @click="showNewMessageModal = true">
+          <p class="empty-text">
+            {{
+              searchQuery
+                ? "Không tìm thấy cuộc trò chuyện"
+                : "Chưa có tin nhắn nào"
+            }}
+          </p>
+          <button
+            v-if="!searchQuery"
+            class="btn-primary"
+            @click="showNewMessageModal = true"
+          >
             Gửi tin nhắn mới
           </button>
         </div>
 
         <div class="conversations-scroll" v-else>
-          <div 
-            v-for="conversation in filteredConversations.slice(0, 5)" 
+          <div
+            v-for="conversation in filteredConversations.slice(0, 5)"
             :key="conversation._id"
             class="message-item"
-            :class="{ 'unread': conversation.unread > 0, 'group-chat': conversation.isGroup }"
+            :class="{
+              unread: conversation.unread > 0,
+              'group-chat': conversation.isGroup,
+            }"
             @click="openConversation(conversation._id)"
           >
             <!-- Group Chat Avatar -->
-            <div v-if="conversation.isGroup" class="message-avatar group-avatar">
+            <div
+              v-if="conversation.isGroup"
+              class="message-avatar group-avatar"
+            >
               <div class="group-icon-wrapper">
                 <i class="material-icons">groups</i>
               </div>
             </div>
-            
+
             <!-- 1-1 Chat Avatar -->
             <div v-else class="message-avatar">
-              <img 
-                v-if="getOtherUser(conversation)?.profilePicture" 
-                :src="`http://localhost:3000/uploads/user/${getOtherUser(conversation).profilePicture}`"
+              <img
+                v-if="getOtherUser(conversation)?.profilePicture"
+                :src="
+                  $buildAssetUrl(
+                    'uploads/user/' + getOtherUser(conversation).profilePicture
+                  )
+                "
                 :alt="getOtherUser(conversation).displayName"
               />
-              <img 
-                v-else 
-                src="@/assets/defaultProfile.png" 
-                alt="User"
-              />
-              <div class="online-status" v-if="getOtherUser(conversation)?.isOnline"></div>
+              <img v-else src="@/assets/defaultProfile.png" alt="User" />
+              <div
+                class="online-status"
+                v-if="getOtherUser(conversation)?.isOnline"
+              ></div>
             </div>
-            
+
             <div class="message-content">
               <div class="message-info">
                 <!-- Group Name or User Name -->
                 <span class="user-name">
-                  <i v-if="conversation.isGroup" class="material-icons group-icon-small">groups</i>
-                  {{ conversation.isGroup ? conversation.groupName : (getOtherUser(conversation)?.displayName || getOtherUser(conversation)?.email || 'Người dùng') }}
+                  <i
+                    v-if="conversation.isGroup"
+                    class="material-icons group-icon-small"
+                    >groups</i
+                  >
+                  {{
+                    conversation.isGroup
+                      ? conversation.groupName
+                      : getOtherUser(conversation)?.displayName ||
+                        getOtherUser(conversation)?.email ||
+                        "Người dùng"
+                  }}
                 </span>
-                <span class="message-time">{{ formatTime(conversation.lastMessageTime) }}</span>
+                <span class="message-time">{{
+                  formatTime(conversation.lastMessageTime)
+                }}</span>
               </div>
               <div class="message-preview">
-                <span class="preview-text" :class="{ 'unread-text': conversation.unread > 0 }">
+                <span
+                  class="preview-text"
+                  :class="{ 'unread-text': conversation.unread > 0 }"
+                >
                   {{ getLastMessagePreview(conversation) }}
                 </span>
-                <span v-if="conversation.unread > 0" class="unread-count">{{ conversation.unread }}</span>
+                <span v-if="conversation.unread > 0" class="unread-count">{{
+                  conversation.unread
+                }}</span>
               </div>
             </div>
           </div>
         </div>
 
         <!-- View All Messages Button - Always show if there are conversations -->
-        <div v-if="conversations.length > 0" class="view-all-messages" @click="goToMessagesPage">
+        <div
+          v-if="conversations.length > 0"
+          class="view-all-messages"
+          @click="goToMessagesPage"
+        >
           <span>Xem tất cả trong Messenger</span>
         </div>
       </div>
@@ -98,14 +150,14 @@
 
     <!-- New Message Modal -->
     <teleport to="body">
-      <NewMessageModal 
+      <NewMessageModal
         v-if="showNewMessageModal"
         @close="showNewMessageModal = false"
         @open-chat="handleOpenChat"
       />
-      
+
       <!-- Create Group Modal -->
-      <CreateGroupModal 
+      <CreateGroupModal
         v-if="showCreateGroupModal"
         @close="showCreateGroupModal = false"
         @group-created="handleGroupCreated"
@@ -115,170 +167,177 @@
 </template>
 
 <script>
-import NewMessageModal from './NewMessageModal.vue'
-import CreateGroupModal from './CreateGroupModal.vue'
+import NewMessageModal from "./NewMessageModal.vue";
+import CreateGroupModal from "./CreateGroupModal.vue";
 
 export default {
-  name: 'MessagesDropdown',
+  name: "MessagesDropdown",
   components: {
     NewMessageModal,
-    CreateGroupModal
+    CreateGroupModal,
   },
   props: {
     isVisible: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   data() {
     return {
-      searchQuery: '',
+      searchQuery: "",
       loading: false,
       showNewMessageModal: false,
-      showCreateGroupModal: false
-    }
+      showCreateGroupModal: false,
+    };
   },
   computed: {
     conversations() {
-      return this.$store.getters.sortedConversations || []
+      return this.$store.getters.sortedConversations || [];
     },
     filteredConversations() {
-      if (!this.searchQuery || this.searchQuery.trim() === '') {
-        return this.conversations
+      if (!this.searchQuery || this.searchQuery.trim() === "") {
+        return this.conversations;
       }
-      
-      const query = this.searchQuery.toLowerCase().trim()
-      return this.conversations.filter(conv => {
-        const otherUser = this.getOtherUser(conv)
-        const userName = (otherUser?.displayName || otherUser?.email || '').toLowerCase()
-        const lastMessagePreview = this.getLastMessagePreview(conv).toLowerCase()
-        return userName.includes(query) || lastMessagePreview.includes(query)
-      })
-    }
+
+      const query = this.searchQuery.toLowerCase().trim();
+      return this.conversations.filter((conv) => {
+        const otherUser = this.getOtherUser(conv);
+        const userName = (
+          otherUser?.displayName ||
+          otherUser?.email ||
+          ""
+        ).toLowerCase();
+        const lastMessagePreview =
+          this.getLastMessagePreview(conv).toLowerCase();
+        return userName.includes(query) || lastMessagePreview.includes(query);
+      });
+    },
   },
   watch: {
     isVisible(newVal) {
-      console.log('MessagesDropdown isVisible changed:', newVal);
+      console.log("MessagesDropdown isVisible changed:", newVal);
       if (newVal) {
-        this.loadConversations()
+        this.loadConversations();
       }
-    }
+    },
   },
   methods: {
     async loadConversations() {
-      console.log('🔄 Loading conversations in MessagesDropdown...');
-      this.loading = true
+      console.log("🔄 Loading conversations in MessagesDropdown...");
+      this.loading = true;
       try {
-        await this.$store.dispatch('loadConversations')
-        console.log('✅ Conversations loaded:', this.conversations);
+        await this.$store.dispatch("loadConversations");
+        console.log("✅ Conversations loaded:", this.conversations);
       } catch (error) {
-        console.error('❌ Load conversations error:', error)
+        console.error("❌ Load conversations error:", error);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
-    
+
     handleSearch() {
       // Search is handled by computed property
     },
-    
+
     openConversation(conversationId) {
-      const conversation = this.conversations.find(c => c._id === conversationId)
+      const conversation = this.conversations.find(
+        (c) => c._id === conversationId
+      );
       if (conversation) {
         // Emit event để mở chat popup
-        this.$emit('open-chat', conversation)
-        this.$emit('close')
+        this.$emit("open-chat", conversation);
+        this.$emit("close");
       }
     },
-    
+
     handleOpenChat(conversation) {
       // Forward event từ NewMessageModal lên parent (TheHeader)
-      this.$emit('open-chat', conversation)
-      this.showNewMessageModal = false
-      this.$emit('close')
+      this.$emit("open-chat", conversation);
+      this.showNewMessageModal = false;
+      this.$emit("close");
     },
-    
+
     handleGroupCreated(group) {
-      console.log('Group created:', group)
-      this.showCreateGroupModal = false
+      console.log("Group created:", group);
+      this.showCreateGroupModal = false;
       // Emit để mở chat popup với group mới
-      this.$emit('open-chat', group)
-      this.$emit('close')
+      this.$emit("open-chat", group);
+      this.$emit("close");
     },
-    
+
     createNewMessage() {
-      this.$emit('close')
+      this.$emit("close");
       this.$router.push({
-        name: 'Messages',
-        query: { new: 'true' }
-      })
+        name: "Messages",
+        query: { new: "true" },
+      });
     },
-    
+
     goToMessagesPage() {
-      this.$emit('close')
-      this.$router.push({ name: 'Messages' })
+      this.$emit("close");
+      this.$router.push({ name: "Messages" });
     },
-    
+
     getOtherUser(conversation) {
       // Backend trả về field 'participant' chứ không phải 'otherUser'
-      return conversation.participant || conversation.otherUser || null
+      return conversation.participant || conversation.otherUser || null;
     },
-    
+
     formatTime(timestamp) {
-      if (!timestamp) return ''
-      
-      const now = new Date()
-      const time = new Date(timestamp)
-      const diff = now - time
-      
-      const minutes = Math.floor(diff / 60000)
-      const hours = Math.floor(diff / 3600000)
-      const days = Math.floor(diff / 86400000)
-      
-      if (minutes < 1) return 'Vừa xong'
-      if (minutes < 60) return `${minutes} phút`
-      if (hours < 24) return `${hours} giờ`
-      if (days < 7) return `${days} ngày`
-      
-      return time.toLocaleDateString('vi-VN')
+      if (!timestamp) return "";
+
+      const now = new Date();
+      const time = new Date(timestamp);
+      const diff = now - time;
+
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+
+      if (minutes < 1) return "Vừa xong";
+      if (minutes < 60) return `${minutes} phút`;
+      if (hours < 24) return `${hours} giờ`;
+      if (days < 7) return `${days} ngày`;
+
+      return time.toLocaleDateString("vi-VN");
     },
-    
+
     getLastMessagePreview(conversation) {
       // Nếu không có lastMessage
       if (!conversation.lastMessage) {
-        return 'Bắt đầu cuộc trò chuyện'
+        return "Bắt đầu cuộc trò chuyện";
       }
-      
-      const message = conversation.lastMessage
-      
+
+      const message = conversation.lastMessage;
+
       // Nếu lastMessage là string (dữ liệu cũ)
-      if (typeof message === 'string') {
-        return message
+      if (typeof message === "string") {
+        return message;
       }
-      
+
       // Nếu lastMessage là object
-      if (typeof message === 'object') {
+      if (typeof message === "object") {
         // Kiểm tra messageType
-        if (message.messageType === 'image') {
-          return '📷 Đã gửi một ảnh'
+        if (message.messageType === "image") {
+          return "📷 Đã gửi một ảnh";
         }
-        if (message.messageType === 'file') {
-          return '📎 Đã gửi một file'
+        if (message.messageType === "file") {
+          return "📎 Đã gửi một file";
         }
-        
+
         // Trả về content cho text message
         if (message.content) {
           // Giới hạn độ dài preview
-          return message.content.length > 50 
-            ? message.content.substring(0, 50) + '...' 
-            : message.content
+          return message.content.length > 50
+            ? message.content.substring(0, 50) + "..."
+            : message.content;
         }
       }
-      
-      return 'Tin nhắn mới'
-    }
-  }
-}
+
+      return "Tin nhắn mới";
+    },
+  },
+};
 </script>
 
 <style scoped>
@@ -301,7 +360,8 @@ export default {
   max-height: 480px;
   background: white;
   border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   z-index: 10000;
   border: 1px solid rgba(226, 232, 240, 0.8);
@@ -315,7 +375,11 @@ export default {
   justify-content: space-between;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--gray-100);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
 }
 
 .messages-header h3 {
@@ -436,12 +500,20 @@ export default {
 }
 
 .message-item:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
   border-left-color: var(--primary);
 }
 
 .message-item.unread {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
 }
 
 .message-avatar {
@@ -491,7 +563,11 @@ export default {
 
 .message-item.group-chat:hover {
   border-left-color: var(--primary);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
 }
 
 .online-status {
@@ -626,7 +702,11 @@ export default {
 }
 
 .view-all-messages:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
   color: #764ba2;
 }
 

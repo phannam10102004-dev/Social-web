@@ -44,7 +44,9 @@
           <div class="reactor-info">
             <span class="reactor-name">{{ reactor.username }}</span>
           </div>
-          <span class="reactor-reaction">{{ getReactionEmoji(reactor.reactionType) }}</span>
+          <span class="reactor-reaction">{{
+            getReactionEmoji(reactor.reactionType)
+          }}</span>
         </div>
         <div v-if="currentReactors.length === 0" class="empty-state">
           Chưa có ai thả cảm xúc
@@ -88,7 +90,10 @@ export default {
   },
   computed: {
     allCount() {
-      return Object.values(this.reactionsCount).reduce((sum, count) => sum + count, 0);
+      return Object.values(this.reactionsCount).reduce(
+        (sum, count) => sum + count,
+        0
+      );
     },
     availableReactions() {
       const reactions = [
@@ -100,11 +105,11 @@ export default {
         { type: "angry", emoji: "😠", label: "Phẫn nộ" },
       ];
       return reactions
-        .map(r => ({
+        .map((r) => ({
           ...r,
           count: this.reactionsCount[r.type] || 0,
         }))
-        .filter(r => r.count > 0);
+        .filter((r) => r.count > 0);
     },
     currentReactors() {
       return this.reactorsByType[this.selectedTab] || [];
@@ -112,12 +117,12 @@ export default {
   },
   async mounted() {
     // Disable body scroll khi modal mở
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     await this.loadReactors(this.selectedTab);
   },
   beforeUnmount() {
     // Enable lại body scroll khi modal đóng
-    document.body.style.overflow = '';
+    document.body.style.overflow = "";
   },
   methods: {
     async selectTab(tab) {
@@ -142,7 +147,7 @@ export default {
     },
     getProfilePicture(user) {
       return user.profilePicture
-        ? `http://localhost:3000/uploads/user/${user.profilePicture}`
+        ? this.$buildAssetUrl("uploads/user/" + user.profilePicture)
         : "https://via.placeholder.com/40";
     },
     getReactionEmoji(reactionType) {
@@ -157,8 +162,8 @@ export default {
       return emojiMap[reactionType] || "👍";
     },
     navigateToProfile(userId) {
-      this.$emit('close');
-      this.$router.push({ name: 'Profile', params: { id: userId } });
+      this.$emit("close");
+      this.$router.push({ name: "Profile", params: { id: userId } });
     },
   },
 };
@@ -241,7 +246,11 @@ export default {
   height: 36px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.08) 0%,
+    rgba(118, 75, 162, 0.08) 100%
+  );
   color: #667eea;
   font-size: 1.5rem;
   cursor: pointer;
@@ -252,7 +261,11 @@ export default {
 }
 
 .close-btn:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.15) 0%,
+    rgba(118, 75, 162, 0.15) 100%
+  );
   transform: rotate(90deg);
 }
 
@@ -278,7 +291,11 @@ export default {
 }
 
 .reaction-tab:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
   border-color: rgba(102, 126, 234, 0.3);
 }
 
@@ -319,7 +336,11 @@ export default {
 }
 
 .reactor-item:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.04) 0%,
+    rgba(118, 75, 162, 0.04) 100%
+  );
   transform: translateX(4px);
 }
 
