@@ -48,8 +48,10 @@ export const getCommenters = (postId) =>
 export const getTimeline = (userId, page = 1, limit = 6) =>
   axios.get(`/posts/timeline/${userId}?page=${page}&limit=${limit}`, { withCredentials: true });
 
-export const getUserPosts = (userId, page = 1, limit = 6) =>
-  axios.get(`/posts/${userId}/posts?page=${page}&limit=${limit}`, { withCredentials: true });
+export const getUserPosts = (userId, page = 1, limit = 6, requestingUserId = null) => {
+  const url = `/posts/${userId}/posts?page=${page}&limit=${limit}${requestingUserId ? `&requestingUserId=${requestingUserId}` : ''}`;
+  return axios.get(url, { withCredentials: true });
+};
 
 export const createPost = (post) =>
   axios.post('/posts/', post, { withCredentials: true });
@@ -72,4 +74,14 @@ export const deletePost = (postId, userId) =>
   axios.delete(`/posts/${postId}`, { 
     data: { userId }, 
     withCredentials: true 
+  });
+
+// Edit and Delete comment endpoints
+export const editComment = (postId, commentId, comment, userId) =>
+  axios.put(`/posts/${postId}/comment/${commentId}`, { comment, userId }, { withCredentials: true });
+
+export const deleteComment = (postId, commentId, userId) =>
+  axios.delete(`/posts/${postId}/comment/${commentId}`, {
+    data: { userId },
+    withCredentials: true
   });

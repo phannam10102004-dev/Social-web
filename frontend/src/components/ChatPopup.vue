@@ -1,35 +1,28 @@
 <template>
-  <div class="chat-popup" v-if="isVisible" :class="{ minimized: isMinimized }">
+  <div class="chat-popup" v-if="isVisible" :class="{ 'minimized': isMinimized }">
     <div class="chat-header" @click="toggleMinimize">
       <div class="chat-user-info">
         <!-- Group Chat Avatar -->
-        <div
-          v-if="conversation?.isGroup"
-          class="chat-avatar group-avatar-wrapper"
-        >
+        <div v-if="conversation?.isGroup" class="chat-avatar group-avatar-wrapper">
           <i class="material-icons">groups</i>
         </div>
-
+        
         <!-- 1-1 Chat Avatar -->
         <template v-else>
-          <img
-            v-if="conversation?.participant?.profilePicture"
-            :src="
-              $buildAssetUrl(
-                'uploads/user/' + conversation.participant.profilePicture
-              )
-            "
+          <img 
+            v-if="conversation?.participant?.profilePicture" 
+            :src="`http://localhost:3000/uploads/user/${conversation.participant.profilePicture}`"
             alt="Avatar"
             class="chat-avatar"
           />
-          <img
-            v-else
-            src="@/assets/defaultProfile.png"
+          <img 
+            v-else 
+            src="@/assets/defaultProfile.png" 
             alt="Avatar"
             class="chat-avatar"
           />
         </template>
-
+        
         <div class="chat-user-details">
           <!-- Group Name -->
           <span v-if="conversation?.isGroup" class="chat-user-name">
@@ -37,55 +30,38 @@
             {{ conversation.groupName }}
           </span>
           <!-- User Name - Clickable -->
-          <span
-            v-else
-            class="chat-user-name clickable-name"
+          <span 
+            v-else 
+            class="chat-user-name clickable-name" 
             @click.stop="goToProfile"
             title="Xem trang cá nhân"
           >
-            {{
-              conversation?.participant?.displayName ||
-              conversation?.participant?.email ||
-              "Người dùng"
-            }}
+            {{ conversation?.participant?.displayName || conversation?.participant?.email || 'Người dùng' }}
           </span>
-
+          
           <!-- Group Members Count -->
           <span v-if="conversation?.isGroup" class="chat-online-status">
             {{ conversation.participants?.length || 0 }} thành viên
           </span>
           <!-- User Online Status -->
-          <span
-            v-else
-            class="chat-online-status"
-            v-show="conversation?.participant?.isOnline"
-          >
+          <span v-else class="chat-online-status" v-show="conversation?.participant?.isOnline">
             Đang hoạt động
           </span>
         </div>
       </div>
       <div class="chat-actions">
         <!-- Group Members Button -->
-        <i
-          v-if="conversation?.isGroup"
-          class="material-icons action-btn"
+        <i 
+          v-if="conversation?.isGroup" 
+          class="material-icons action-btn" 
           @click.stop="showGroupMembers"
           title="Thành viên nhóm"
         >
           people
         </i>
-
-        <i
-          v-if="!conversation?.isGroup"
-          class="material-icons action-btn"
-          @click.stop="handleCallButton"
-          title="Gọi video"
-        >
-          {{ isCallActive ? "call_end" : "videocam" }}
-        </i>
-
+        
         <i class="material-icons action-btn" @click.stop="toggleMinimize">
-          {{ isMinimized ? "expand_less" : "remove" }}
+          {{ isMinimized ? 'expand_less' : 'remove' }}
         </i>
         <i class="material-icons action-btn" @click.stop="closeChat">close</i>
       </div>
@@ -97,7 +73,7 @@
           <div class="loading-spinner"></div>
           <span>Đang tải tin nhắn...</span>
         </div>
-
+        
         <div v-else-if="messages.length === 0" class="empty-chat">
           <div class="empty-icon">💬</div>
           <p>Chưa có tin nhắn nào</p>
@@ -105,46 +81,59 @@
         </div>
 
         <div v-else class="messages-list">
-          <div
-            v-for="message in messages"
+          <div 
+            v-for="message in messages" 
             :key="message._id"
             class="message-wrapper"
             :class="{ 'own-message': isOwnMessage(message) }"
           >
-            <img
+            <img 
               v-if="!isOwnMessage(message) && message.sender.profilePicture"
-              :src="
-                $buildAssetUrl('uploads/user/' + message.sender.profilePicture)
-              "
+              :src="`http://localhost:3000/uploads/user/${message.sender.profilePicture}`"
               class="message-avatar"
             />
-            <img
+            <img 
               v-else-if="!isOwnMessage(message)"
               src="@/assets/defaultProfile.png"
               class="message-avatar"
             />
-
-            <div
-              class="message-bubble"
-              :class="{ 'own-bubble': isOwnMessage(message) }"
-            >
-              <div v-if="message.messageType === 'image'" class="message-image">
-                <img
-                  :src="$buildAssetUrl('uploads/' + message.file)"
-                  alt="Image"
-                />
-              </div>
-              <div
-                v-else-if="message.messageType === 'file'"
-                class="message-file"
+            
+            <div class="message-with-reactions">
+              <div 
+                class="message-bubble" 
+                :class="{ 'own-bubble': isOwnMessage(message) }"
+                @mousedown="startLongPress($event, message)"
+                @mouseup="cancelLongPress"
+                @mouseleave="cancelLongPress"
+                @touchstart="startLongPress($event, message)"
+                @touchend="cancelLongPress"
               >
-                <i class="material-icons">attach_file</i>
-                <span>{{ message.file }}</span>
+                <!-- More Options Button -->
+                <button 
+                  v-if="isOwnMessage(message)" 
+                  class="message-more-btn"
+                  @click.stop.prevent="showContextMenu($event, message)"
+                >
+                  <i class="material-icons">more_horiz</i>
+                </button>
+
+                <div v-if="message.messageType === 'image'" class="message-image">
+                  <img :src="`http://localhost:3000/uploads/${message.file}`" alt="Image" />
+                </div>
+                <div v-else-if="message.messageType === 'file'" class="message-file" @click="downloadFile(message)">
+                  <i class="material-icons">attach_file</i>
+                  <span>{{ message.originalFileName || message.file }}</span>
+                  <i class="material-icons download-icon">download</i>
+                </div>
+                <p v-else class="message-text">{{ message.content }}</p>
+                <span class="message-time">{{ formatTime(message.createdAt) }}</span>
               </div>
-              <p v-else class="message-text">{{ message.content }}</p>
-              <span class="message-time">{{
-                formatTime(message.createdAt)
-              }}</span>
+              
+              <!-- Message Reactions Summary - BÊN NGOÀI BUBBLE -->
+              <MessageReactionsSummary 
+                :reactions="getMessageReactions(message)"
+                @show-reactors="showMessageReactors(message)"
+              />
             </div>
           </div>
           <!-- Anchor element để scroll tới -->
@@ -153,132 +142,187 @@
       </div>
 
       <div class="chat-input">
-        <div class="input-actions">
-          <!-- <i class="material-icons action-icon" @click="triggerFileInput">attach_file</i> -->
-          <i class="material-icons action-icon" @click="triggerImageInput"
-            >image</i
-          >
-          <input
-            type="file"
-            ref="fileInput"
-            style="display: none"
+        <div class="plus-menu-wrapper">
+          <i class="material-icons plus-icon" @click.stop="toggleAttachMenu">add_circle</i>
+          
+          <!-- Attach Menu -->
+          <div v-if="showAttachMenu" class="attach-menu" @click.stop>
+            <div class="attach-menu-item" @click="triggerImageInput">
+              <i class="material-icons">image</i>
+              <span>Ảnh</span>
+            </div>
+            <div class="attach-menu-item" @click="triggerFileInput">
+              <i class="material-icons">attach_file</i>
+              <span>File</span>
+            </div>
+          </div>
+          
+          <input 
+            type="file" 
+            ref="fileInput" 
+            accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx"
+            style="display: none" 
             @change="handleFileSelect"
           />
-          <input
-            type="file"
-            ref="imageInput"
-            accept="image/*"
-            style="display: none"
+          <input 
+            type="file" 
+            ref="imageInput" 
+            accept="image/*" 
+            style="display: none" 
             @change="handleImageSelect"
           />
         </div>
-        <input
-          type="text"
-          v-model="messageInput"
+        
+        <input 
+          type="text" 
+          v-model="messageInput" 
           placeholder="Aa"
           @keydown.enter="sendMessage"
           class="message-input"
+          ref="chatInput"
         />
-        <i
-          class="material-icons send-btn"
-          @click="sendMessage"
-          :class="{ active: messageInput.trim() }"
-        >
+        
+        <i class="material-icons emoji-icon" @click.stop="toggleEmojiPicker">sentiment_satisfied_alt</i>
+        <i class="material-icons send-icon" @click="sendMessage" :class="{ 'active': messageInput.trim() }">
           send
         </i>
       </div>
     </div>
-
-    <!-- Incoming Call Modal -->
-    <teleport to="body">
-      <div
-        v-if="incomingCall && !isCallModalVisible"
-        class="call-overlay incoming"
+    
+    <!-- Emoji Picker Modal -->
+    <div v-if="showEmojiPicker" class="emoji-picker-overlay" @click="closeEmojiPicker">
+      <div class="emoji-picker-container" @click.stop>
+        <div class="emoji-picker-search">
+          <i class="material-icons">search</i>
+          <input 
+            v-model="emojiSearch" 
+            type="text" 
+            placeholder="Tìm kiếm biểu tượng cảm xúc"
+            @input="filterEmojis"
+          />
+        </div>
+        
+        <div class="emoji-categories">
+          <button 
+            v-for="cat in categories" 
+            :key="cat.id"
+            :class="['category-btn', { active: activeCategory === cat.id }]"
+            @click="selectCategory(cat.id)"
+            :title="cat.name"
+          >
+            {{ cat.icon }}
+          </button>
+        </div>
+        
+        <div class="emoji-category-title">
+          {{ getCurrentCategoryName() }}
+        </div>
+        
+        <div class="emoji-grid-container">
+          <button 
+            v-for="emoji in filteredEmojis" 
+            :key="emoji" 
+            @click="insertEmoji(emoji)"
+            class="emoji-item"
+            type="button"
+          >
+            {{ emoji }}
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Reaction Picker -->
+    <MessageReactionPicker 
+      :show="showReactionPicker"
+      :position="reactionPickerPosition"
+      :selected-message="selectedMessage"
+      :current-user-id="currentUserId"
+      @select="handleReactionSelect"
+    />
+    
+    <!-- Floating Emoji Animation -->
+    <transition-group name="float" tag="div" class="floating-emojis">
+      <div 
+        v-for="emoji in floatingEmojis" 
+        :key="emoji.id"
+        class="floating-emoji"
+        :style="{ left: emoji.x + 'px', top: emoji.y + 'px' }"
       >
-        <div class="call-dialog">
-          <div class="call-dialog-header">
-            <i class="material-icons call-icon">videocam</i>
-            <div class="call-dialog-info">
-              <span class="call-dialog-title">Cuộc gọi đến</span>
-              <span class="call-dialog-subtitle">
-                {{ incomingCallerName }}
-              </span>
-            </div>
-          </div>
-          <div class="call-dialog-actions">
-            <button class="call-btn reject" @click="rejectIncomingCall">
-              <i class="material-icons">call_end</i>
-              Từ chối
-            </button>
-            <button class="call-btn accept" @click="acceptIncomingCall">
-              <i class="material-icons">call</i>
-              Trả lời
-            </button>
-          </div>
+        {{ emoji.emoji }}
+      </div>
+    </transition-group>
+    
+    <!-- Message Reactors Modal -->
+    <MessageReactorsModal 
+      :show="showReactorsModal"
+      :reactions="selectedMessageForReactors ? getMessageReactions(selectedMessageForReactors) : []"
+      @close="showReactorsModal = false"
+    />
+
+    <!-- Context Menu -->
+    <div 
+      v-if="showMessageMenu" 
+      class="message-context-menu"
+      :style="{ top: menuPosition.y + 'px', left: menuPosition.x + 'px' }"
+      @click.stop
+    >
+      <div class="menu-item" @click="editMessage" v-if="canEdit(contextMessage)">
+        <i class="material-icons">edit</i>
+        <span>Sửa</span>
+      </div>
+      <div class="menu-item delete" @click="confirmDelete">
+        <i class="material-icons">delete</i>
+        <span>Xóa</span>
+      </div>
+    </div>
+
+    <!-- Edit Message Modal -->
+    <div v-if="showEditModal" class="edit-modal-overlay" @click="cancelEdit">
+      <div class="edit-modal" @click.stop>
+        <div class="edit-modal-header">
+          <h3>Sửa tin nhắn</h3>
+          <button @click="cancelEdit" class="close-btn">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+        <div class="edit-modal-body">
+          <textarea 
+            v-model="editingContent"
+            placeholder="Nhập nội dung tin nhắn..."
+            ref="editTextarea"
+            @keydown.enter.ctrl="saveEdit"
+          ></textarea>
+        </div>
+        <div class="edit-modal-footer">
+          <button @click="cancelEdit" class="btn-cancel">Hủy</button>
+          <button @click="saveEdit" class="btn-save" :disabled="!editingContent.trim()">Lưu</button>
         </div>
       </div>
-    </teleport>
+    </div>
 
-    <!-- Active Call Window -->
-    <teleport to="body">
-      <div v-if="isCallModalVisible" class="call-overlay active">
-        <div class="call-window">
-          <div class="call-window-header">
-            <div class="call-window-info">
-              <span class="call-window-title">
-                {{ conversation?.participant?.displayName || "Cuộc gọi video" }}
-              </span>
-              <span class="call-window-status">{{ callStatusLabel }}</span>
-            </div>
-            <button class="call-window-close" @click="endCall(true)">
-              <i class="material-icons">close</i>
-            </button>
-          </div>
-          <div class="call-video-container">
-            <video
-              ref="remoteVideo"
-              class="remote-video"
-              autoplay
-              playsinline
-            ></video>
-            <video
-              ref="localVideo"
-              class="local-video"
-              autoplay
-              playsinline
-              muted
-            ></video>
-          </div>
-          <div class="call-controls">
-            <button
-              class="call-control-btn"
-              :class="{ muted: isAudioMuted }"
-              @click="toggleAudio"
-            >
-              <i class="material-icons">
-                {{ isAudioMuted ? "mic_off" : "mic" }}
-              </i>
-            </button>
-            <button
-              class="call-control-btn"
-              :class="{ muted: isVideoDisabled }"
-              @click="toggleVideo"
-            >
-              <i class="material-icons">
-                {{ isVideoDisabled ? "videocam_off" : "videocam" }}
-              </i>
-            </button>
-            <button class="call-control-btn end" @click="endCall(true)">
-              <i class="material-icons">call_end</i>
-            </button>
-          </div>
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="edit-modal-overlay" @click="showDeleteModal = false">
+      <div class="edit-modal delete-confirm-modal" @click.stop>
+        <div class="edit-modal-header">
+          <h3>Xác nhận xóa</h3>
+          <button @click="showDeleteModal = false" class="close-btn">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+        <div class="edit-modal-body">
+          <p>Bạn có chắc muốn xóa tin nhắn này?</p>
+        </div>
+        <div class="edit-modal-footer">
+          <button @click="showDeleteModal = false" class="btn-cancel">Hủy</button>
+          <button @click="deleteMessage" class="btn-delete">Xóa</button>
         </div>
       </div>
-    </teleport>
-
+    </div>
+    
     <!-- Group Members Modal -->
     <teleport to="body">
-      <GroupMembersModal
+      <GroupMembersModal 
         v-if="showMembersModal && conversation?.isGroup"
         :conversation="conversation"
         :current-user-id="currentUserId"
@@ -294,1007 +338,991 @@
 </template>
 
 <script>
-import MessageAPI from "@/api/messages";
-import socketService from "@/services/socketService";
-import GroupMembersModal from "./GroupMembersModal.vue";
+import MessageAPI from '@/api/messages';
+import socketService from '@/services/socketService';
+import GroupMembersModal from './GroupMembersModal.vue';
+import MessageReactionPicker from './MessageReactionPicker.vue';
+import MessageReactionsSummary from './MessageReactionsSummary.vue';
+import MessageReactorsModal from './MessageReactorsModal.vue';
 
 export default {
-  name: "ChatPopup",
+  name: 'ChatPopup',
   components: {
     GroupMembersModal,
+    MessageReactionPicker,
+    MessageReactionsSummary,
+    MessageReactorsModal
   },
   props: {
     conversation: {
       type: Object,
-      required: true,
+      required: true
     },
     isVisible: {
       type: Boolean,
-      default: true,
-    },
+      default: true
+    }
   },
   data() {
     return {
       isMinimized: false,
       messages: [],
-      messageInput: "",
+      messageInput: '',
       loading: false,
       selectedFile: null,
       currentUserId: this.$store.state.user?._id,
       showMembersModal: false,
-      callStatus: "idle",
-      isCallModalVisible: false,
-      incomingCall: null,
-      isCallInitiator: false,
-      peerConnection: null,
-      localStream: null,
-      remoteStream: null,
-      isAudioMuted: false,
-      isVideoDisabled: false,
-      iceCandidateQueue: [],
-      callTimeoutTimer: null,
-    };
-  },
-  computed: {
-    isCallActive() {
-      return ["connecting", "in-call"].includes(this.callStatus);
-    },
-    callStatusLabel() {
-      switch (this.callStatus) {
-        case "requesting":
-          return "Đang gọi...";
-        case "ringing":
-          return "Có cuộc gọi đến";
-        case "connecting":
-          return "Đang kết nối...";
-        case "in-call":
-          return "Đang trong cuộc gọi";
-        default:
-          return "Sẵn sàng";
+      showReactionPicker: false,
+      reactionPickerPosition: { top: 0, left: 0 },
+      selectedMessage: null,
+      longPressTimer: null,
+      longPressDuration: 500,
+      floatingEmojis: [],
+      lastEvent: null,
+      showReactorsModal: false,
+      selectedMessageForReactors: null,
+      showMessageMenu: false,
+      menuPosition: { x: 0, y: 0 },
+      contextMessage: null,
+      showEditModal: false,
+      showDeleteModal: false,
+      editingContent: '',
+      editingMessageId: null,
+      showEmojiPicker: false,
+      showAttachMenu: false,
+      emojiSearch: '',
+      activeCategory: 'smileys',
+      categories: [
+        { id: 'smileys', name: 'Mặt cười và hình người', icon: '😀' },
+        { id: 'animals', name: 'Động vật và thiên nhiên', icon: '🐻' },
+        { id: 'food', name: 'Đồ ăn và đồ uống', icon: '🍔' },
+        { id: 'activities', name: 'Hoạt động', icon: '⚽' },
+        { id: 'travel', name: 'Du lịch và địa điểm', icon: '🚗' },
+        { id: 'objects', name: 'Đồ vật', icon: '💡' },
+        { id: 'symbols', name: 'Biểu tượng', icon: '❤️' },
+        { id: 'flags', name: 'Cờ', icon: '🏳️' }
+      ],
+      emojiData: {
+        smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '😶\u200d🌫️', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'],
+        animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐽', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕\u200d🦺', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊️', '🐇', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿️', '🦔'],
+        food: ['🍇', '🍈', '🍉', '🍊', '🍋', '🍌', '🍍', '🥭', '🍎', '🍏', '🍐', '🍑', '🍒', '🍓', '🥝', '🍅', '🥥', '🥑', '🍆', '🥔', '🥕', '🌽', '🌶️', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', '🥜', '🌰', '🍞', '🥐', '🥖', '🥨', '🥯', '🥞', '🧇', '🧀', '🍖', '🍗', '🥩', '🥓', '🍔', '🍟', '🍕', '🌭', '🥪', '🌮', '🌯', '🥙', '🧆', '🥚', '🍳', '🥘', '🍲', '🥣', '🥗', '🍿', '🧈', '🧂', '🥫', '🍱', '🍘', '🍙', '🍚', '🍛', '🍜', '🍝', '🍠', '🍢', '🍣', '🍤', '🍥', '🥮', '🍡', '🥟', '🥠', '🥡', '🦀', '🦞', '🦐', '🦑', '🦪', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁', '🥧', '🍫', '🍬', '🍭', '🍮', '🍯', '🍼', '🥛', '☕', '🍵', '🍶', '🍾', '🍷', '🍸', '🍹', '🍺', '🍻', '🥂', '🥃', '🥤', '🧃', '🧉', '🧊'],
+        activities: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸️', '🥌', '🎿', '⛷️', '🏂', '🪂', '🏋️', '🤼', '🤸', '🤺', '⛹️', '🤾', '🏌️', '🏇', '🧘', '🏊', '🤽', '🚣', '🧗', '🚴', '🚵', '🎪', '🎭', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', '🎺', '🎸', '🪕', '🎻', '🎲', '♟️', '🎯', '🎳', '🎮', '🎰', '🧩'],
+        travel: ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🚚', '🚛', '🚜', '🦯', '🦽', '🦼', '🛴', '🚲', '🛵', '🏍️', '🛺', '🚨', '🚔', '🚍', '🚘', '🚖', '🚡', '🚠', '🚟', '🚃', '🚋', '🚞', '🚝', '🚄', '🚅', '🚈', '🚂', '🚆', '🚇', '🚊', '🚉', '✈️', '🛫', '🛬', '🛩️', '💺', '🛰️', '🚀', '🛸', '🚁', '🛶', '⛵', '🚤', '🛥️', '🛳️', '⛴️', '🚢', '⚓', '⛽', '🚧', '🚦', '🚥', '🚏', '🗺️', '🗿', '🗽', '🗼', '🏰', '🏯', '🏟️', '🎡', '🎢', '🎠', '⛲', '⛱️', '🏖️', '🏝️', '🏜️', '🌋', '⛰️', '🏔️', '🗻', '🏕️', '⛺', '🏠', '🏡', '🏘️', '🏚️', '🏗️', '🏭', '🏢', '🏬', '🏣', '🏤', '🏥', '🏦', '🏨', '🏪', '🏫', '🏩', '💒', '🏛️', '⛪', '🕌', '🕍', '🛕', '🕋'],
+        objects: ['⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '🕹️', '🗜️', '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '🧭', '⏱️', '⏲️', '⏰', '🕰️', '⌛', '⏳', '📡', '🔋', '🔌', '💡', '🔦', '🕯️', '🪔', '🧯', '🛢️', '💸', '💵', '💴', '💶', '💷', '💰', '💳', '💎', '⚖️', '🧰', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🔩', '⚙️', '🧱', '⛓️', '🧲', '🔫', '💣', '🧨', '🪓', '🔪', '🗡️', '⚔️', '🛡️', '🚬', '⚰️', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬', '🕳️', '🩹', '🩺', '💊', '💉', '🩸', '🧬', '🦠', '🧫', '🧪', '🌡️', '🧹', '🧺', '🧻', '🚽', '🚰', '🚿', '🛁', '🛀', '🧼', '🪒', '🧽', '🧴', '🛎️', '🔑', '🗝️', '🚪', '🪑', '🛋️', '🛏️', '🛌', '🧸', '🖼️', '🛍️', '🛒', '🎁', '🎈', '🎏', '🎀', '🎊', '🎉', '🎎', '🏮', '🎐', '🧧', '✉️', '📩', '📨', '📧', '💌', '📥', '📤', '📦', '🏷️', '📪', '📫', '📬', '📭', '📮', '📯', '📜', '📃', '📄', '📑', '🧾', '📊', '📈', '📉', '🗒️', '🗓️', '📆', '📅', '🗑️', '📇', '🗃️', '🗳️', '🗄️', '📋', '📁', '📂', '🗂️', '🗞️', '📰', '📓', '📔', '📒', '📕', '📗', '📘', '📙', '📚', '📖', '🔖', '🧷', '🔗', '📎', '🖇️', '📐', '📏', '🧮', '📌', '📍', '✂️', '🖊️', '🖋️', '✒️', '🖌️', '🖍️', '📝', '✏️', '🔍', '🔎', '🔏', '🔐', '🔒', '🔓'],
+        symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊', '🔔', '🔕', '📣', '📢', '👁️\u200d🗨️', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️', '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞', '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧'],
+        flags: ['🏳️', '🏴', '🏴\u200d☠️', '🏁', '🚩', '🏳️\u200d🌈', '🏳️\u200d⚧️', '🇻🇳', '🇺🇸', '🇬🇧', '🇫🇷', '🇩🇪', '🇯🇵', '🇰🇷', '🇨🇳', '🇮🇹', '🇪🇸', '🇷🇺', '🇧🇷', '🇦🇺', '🇨🇦', '🇮🇳', '🇲🇽', '🇮🇩', '🇹🇭', '🇸🇬', '🇲🇾', '🇵🇭']
       }
-    },
-    incomingCallerName() {
-      if (!this.incomingCall) {
-        return "";
-      }
-
-      if (this.conversation?.isGroup) {
-        return "Thành viên nhóm";
-      }
-
-      if (
-        this.conversation?.participant?._id?.toString() ===
-        this.incomingCall.callerId?.toString()
-      ) {
-        return (
-          this.conversation.participant.displayName ||
-          this.conversation.participant.email ||
-          "Người dùng"
-        );
-      }
-
-      return "Cuộc gọi đến";
-    },
+    }
   },
   watch: {
-    "conversation._id": {
+    'conversation._id': {
       handler(newId, oldId) {
         // Leave old conversation
         if (oldId) {
-          if (this.callStatus !== "idle") {
-            this.endCall(true);
-          }
-          console.log("🚪 Leaving old conversation:", oldId);
-          socketService.leaveConversation(oldId);
+          socketService.leaveConversation(oldId)
         }
-
+        
         // Load and join new conversation
         if (newId) {
-          console.log("🚀 Joining new conversation:", newId);
-          this.loadMessages();
-          socketService.joinConversation(newId);
+          this.loadMessages()
+          socketService.joinConversation(newId)
         }
       },
-      immediate: true,
+      immediate: true
     },
     isMinimized(newVal) {
       // Khi mở rộng popup (từ minimized → expanded)
       if (!newVal) {
-        this.markConversationAsRead();
+        this.markConversationAsRead()
+        
+        // Scroll xuống tin nhắn mới nhất khi mở popup
+        this.$nextTick(() => {
+          setTimeout(() => {
+            this.scrollToBottom()
+          }, 300)
+        })
       }
-    },
+    }
   },
   mounted() {
-    console.log("🎧 ChatPopup mounted, setting up socket listeners");
     // Đợi một chút để đảm bảo socket đã connect
     this.$nextTick(() => {
-      this.setupSocketListeners();
-      this.setupCallListeners();
-    });
+      this.setupSocketListeners()
+      
+      // Scroll xuống tin nhắn mới nhất khi mở popup lần đầu - tăng delay lên 1s
+      setTimeout(() => {
+        console.log('🚀 [ChatPopup mounted] Triggering scroll to bottom');
+        this.scrollToBottom()
+      }, 1000)
+      
+      // Thử lại lần nữa để chắc chắn
+      setTimeout(() => {
+        console.log('🚀 [ChatPopup mounted] 2nd scroll attempt');
+        this.scrollToBottom()
+      }, 1500)
+    })
+    
+    // Close menus on click outside
+    document.addEventListener('click', this.handleClickOutside)
   },
   beforeUnmount() {
-    console.log("🧹 ChatPopup unmounting, cleaning up");
+    console.log('🧹 ChatPopup unmounting, cleaning up')
     // Clean up socket listeners
     if (this.conversation?._id) {
-      socketService.leaveConversation(this.conversation._id);
+      socketService.leaveConversation(this.conversation._id)
     }
-    socketService.off("newMessage", this.handleNewMessage);
-    socketService.off("call:incoming", this.handleIncomingCall);
-    socketService.off("call:cancelled", this.handleCallCancelled);
-    socketService.off("call:rejected", this.handleCallRejected);
-    socketService.off("call:accepted", this.handleCallAccepted);
-    socketService.off("call:offer", this.handleCallOffer);
-    socketService.off("call:answer", this.handleCallAnswer);
-    socketService.off("call:iceCandidate", this.handleIceCandidate);
-    socketService.off("call:ended", this.handleCallEnded);
-    this.cleanupCall(false);
+    socketService.off('newMessage', this.handleNewMessage)
+    socketService.off('messageReactionUpdated', this.handleReactionUpdate)
+    
+    // Remove click outside listener
+    document.removeEventListener('click', this.handleClickOutside)
   },
   methods: {
-    setupCallListeners() {
-      socketService.onIncomingCall(this.handleIncomingCall);
-      socketService.onCallCancelled(this.handleCallCancelled);
-      socketService.onCallRejected(this.handleCallRejected);
-      socketService.onCallAccepted(this.handleCallAccepted);
-      socketService.onCallOffer(this.handleCallOffer);
-      socketService.onCallAnswer(this.handleCallAnswer);
-      socketService.onIceCandidate(this.handleIceCandidate);
-      socketService.onCallEnded(this.handleCallEnded);
-    },
-
-    handleCallButton() {
-      if (!this.conversation || this.conversation.isGroup) {
-        return;
-      }
-
-      if (
-        ["requesting", "ringing", "connecting", "in-call"].includes(
-          this.callStatus
-        )
-      ) {
-        this.endCall(true);
-      } else {
-        this.initiateCall();
-      }
-    },
-
-    async initiateCall() {
-      if (!this.conversation?._id) {
-        return;
-      }
-
-      try {
-        this.isCallInitiator = true;
-        this.callStatus = "requesting";
-        this.isCallModalVisible = true;
-        this.$store.dispatch("setCallState", {
-          status: "requesting",
-          conversationId: this.conversation._id,
-          callerId: this.currentUserId,
-          callType: "video",
-          isGroup: !!this.conversation?.isGroup,
-        });
-        this.$store.dispatch("setCallError", null);
-
-        await this.prepareLocalStream();
-        await this.createPeerConnection();
-
-        socketService.requestCall(this.conversation._id, "video");
-        this.startCallTimeout();
-      } catch (error) {
-        console.error("initiateCall error:", error);
-        this.handleCallError("Không thể bắt đầu cuộc gọi", true);
-      }
-    },
-
-    async prepareLocalStream() {
-      if (this.localStream) {
-        this.attachLocalStream();
-        return;
-      }
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-        this.localStream = stream;
-        this.isAudioMuted = false;
-        this.isVideoDisabled = false;
-        this.attachLocalStream();
-      } catch (error) {
-        console.error("prepareLocalStream error:", error);
-        throw error;
-      }
-    },
-
-    attachLocalStream() {
-      if (!this.localStream || !this.$refs.localVideo) {
-        return;
-      }
-      this.$refs.localVideo.srcObject = this.localStream;
-    },
-
-    attachRemoteStream() {
-      if (!this.remoteStream || !this.$refs.remoteVideo) {
-        return;
-      }
-      this.$refs.remoteVideo.srcObject = this.remoteStream;
-    },
-
-    async createPeerConnection() {
-      if (this.peerConnection) {
-        return this.peerConnection;
-      }
-
-      const configuration = {
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-      };
-
-      const pc = new RTCPeerConnection(configuration);
-      this.peerConnection = pc;
-
-      if (this.localStream) {
-        this.localStream.getTracks().forEach((track) => {
-          pc.addTrack(track, this.localStream);
-        });
-      }
-
-      pc.ontrack = (event) => {
-        const [stream] = event.streams;
-        if (stream) {
-          this.remoteStream = stream;
-          this.attachRemoteStream();
-        }
-      };
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate && this.conversation?._id) {
-          socketService.sendIceCandidate(
-            this.conversation._id,
-            event.candidate
-          );
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "connected") {
-          this.callStatus = "in-call";
-          this.$store.dispatch("updateCallStatus", "in-call");
-          this.clearCallTimeout();
-        } else if (
-          pc.connectionState === "failed" ||
-          pc.connectionState === "disconnected"
-        ) {
-          this.handleCallError("Kết nối bị gián đoạn");
-        }
-      };
-
-      await this.drainIceQueue();
-
-      return pc;
-    },
-
-    async drainIceQueue() {
-      if (!this.peerConnection || !this.iceCandidateQueue.length) {
-        return;
-      }
-
-      const queue = [...this.iceCandidateQueue];
-      this.iceCandidateQueue = [];
-
-      for (const candidate of queue) {
-        try {
-          await this.peerConnection.addIceCandidate(
-            new RTCIceCandidate(candidate)
-          );
-        } catch (error) {
-          console.error("Add queued ICE candidate error:", error);
-        }
-      }
-    },
-
-    handleIncomingCall(payload) {
-      if (!payload || payload.conversationId !== this.conversation?._id) {
-        return;
-      }
-
-      if (payload.callerId?.toString() === this.currentUserId?.toString()) {
-        return;
-      }
-
-      if (this.callStatus !== "idle") {
-        socketService.rejectCall(payload.conversationId);
-        return;
-      }
-
-      this.incomingCall = payload;
-      this.callStatus = "ringing";
-      this.$store.dispatch("setCallState", {
-        status: "ringing",
-        conversationId: payload.conversationId,
-        callerId: payload.callerId,
-        callType: payload.callType || "video",
-        isGroup: payload.isGroup || false,
-      });
-      this.$store.dispatch("setCallError", null);
-      this.startCallTimeout();
-    },
-
-    async acceptIncomingCall() {
-      if (!this.incomingCall) {
-        return;
-      }
-
-      try {
-        const { conversationId } = this.incomingCall;
-        this.isCallInitiator = false;
-        this.isCallModalVisible = true;
-        this.callStatus = "connecting";
-        this.$store.dispatch("updateCallStatus", "connecting");
-        await this.prepareLocalStream();
-        await this.createPeerConnection();
-        socketService.acceptCall(conversationId);
-        this.incomingCall = null;
-      } catch (error) {
-        console.error("acceptIncomingCall error:", error);
-        this.handleCallError("Không thể tham gia cuộc gọi");
-      }
-    },
-
-    rejectIncomingCall() {
-      if (!this.incomingCall) {
-        return;
-      }
-      socketService.rejectCall(this.incomingCall.conversationId);
-      this.incomingCall = null;
-      this.callStatus = "idle";
-      this.$store.dispatch("resetCallState");
-      this.clearCallTimeout();
-    },
-
-    async handleCallAccepted(data) {
-      if (!data || data.conversationId !== this.conversation?._id) {
-        return;
-      }
-
-      if (
-        !this.isCallInitiator ||
-        data.userId?.toString() === this.currentUserId?.toString()
-      ) {
-        return;
-      }
-
-      try {
-        await this.createAndSendOffer();
-      } catch (error) {
-        console.error("handleCallAccepted error:", error);
-        this.handleCallError("Không thể thiết lập cuộc gọi");
-      }
-    },
-
-    async createAndSendOffer() {
-      if (!this.peerConnection) {
-        await this.createPeerConnection();
-      }
-
-      if (!this.peerConnection) {
-        return;
-      }
-
-      const offer = await this.peerConnection.createOffer();
-      await this.peerConnection.setLocalDescription(offer);
-      socketService.sendOffer(this.conversation._id, offer);
-      this.callStatus = "connecting";
-      this.$store.dispatch("updateCallStatus", "connecting");
-    },
-
-    async handleCallOffer(data) {
-      if (!data || data.conversationId !== this.conversation?._id) {
-        return;
-      }
-
-      if (data.userId?.toString() === this.currentUserId?.toString()) {
-        return;
-      }
-
-      try {
-        if (!this.peerConnection) {
-          await this.createPeerConnection();
-        }
-
-        if (!this.peerConnection) {
-          return;
-        }
-
-        const offer = new RTCSessionDescription(data.offer);
-        await this.peerConnection.setRemoteDescription(offer);
-
-        if (!this.isCallInitiator) {
-          const answer = await this.peerConnection.createAnswer();
-          await this.peerConnection.setLocalDescription(answer);
-          socketService.sendAnswer(data.conversationId, answer);
-          this.callStatus = "connecting";
-          this.$store.dispatch("updateCallStatus", "connecting");
-        }
-
-        await this.drainIceQueue();
-      } catch (error) {
-        console.error("handleCallOffer error:", error);
-        this.handleCallError("Không thể xử lý tín hiệu cuộc gọi");
-      }
-    },
-
-    async handleCallAnswer(data) {
-      if (!data || data.conversationId !== this.conversation?._id) {
-        return;
-      }
-
-      if (!this.isCallInitiator) {
-        return;
-      }
-
-      try {
-        if (!this.peerConnection) {
-          return;
-        }
-
-        const answer = new RTCSessionDescription(data.answer);
-        await this.peerConnection.setRemoteDescription(answer);
-        await this.drainIceQueue();
-      } catch (error) {
-        console.error("handleCallAnswer error:", error);
-        this.handleCallError("Không thể hoàn tất kết nối cuộc gọi");
-      }
-    },
-
-    async handleIceCandidate(data) {
-      if (!data || data.conversationId !== this.conversation?._id) {
-        return;
-      }
-
-      if (data.userId?.toString() === this.currentUserId?.toString()) {
-        return;
-      }
-
-      if (this.peerConnection) {
-        try {
-          await this.peerConnection.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          console.error("handleIceCandidate error:", error);
-        }
-      } else {
-        this.iceCandidateQueue.push(data.candidate);
-      }
-    },
-
-    handleCallCancelled(data) {
-      if (!data || data.conversationId !== this.conversation?._id) {
-        return;
-      }
-
-      if (data.userId?.toString() === this.currentUserId?.toString()) {
-        return;
-      }
-
-      if (this.incomingCall) {
-        this.incomingCall = null;
-        this.callStatus = "idle";
-        this.$store.dispatch("resetCallState");
-        this.clearCallTimeout();
-        return;
-      }
-
-      if (this.isCallInitiator) {
-        this.handleCallError("Người dùng đã hủy cuộc gọi");
-      } else {
-        this.cleanupCall(false);
-      }
-    },
-
-    handleCallRejected(data) {
-      if (!data || data.conversationId !== this.conversation?._id) {
-        return;
-      }
-
-      if (data.userId?.toString() === this.currentUserId?.toString()) {
-        return;
-      }
-
-      if (this.isCallInitiator) {
-        this.handleCallError("Người dùng đã từ chối cuộc gọi");
-      }
-    },
-
-    handleCallEnded(data) {
-      if (!data || data.conversationId !== this.conversation?._id) {
-        return;
-      }
-
-      if (data.userId?.toString() === this.currentUserId?.toString()) {
-        return;
-      }
-
-      this.cleanupCall(false);
-    },
-
-    toggleAudio() {
-      if (!this.localStream) {
-        return;
-      }
-
-      const nextMuted = !this.isAudioMuted;
-      this.localStream.getAudioTracks().forEach((track) => {
-        track.enabled = !nextMuted;
-      });
-      this.isAudioMuted = nextMuted;
-    },
-
-    toggleVideo() {
-      if (!this.localStream) {
-        return;
-      }
-
-      const nextDisabled = !this.isVideoDisabled;
-      this.localStream.getVideoTracks().forEach((track) => {
-        track.enabled = !nextDisabled;
-      });
-      this.isVideoDisabled = nextDisabled;
-    },
-
-    clearCallTimeout() {
-      if (this.callTimeoutTimer) {
-        clearTimeout(this.callTimeoutTimer);
-        this.callTimeoutTimer = null;
-      }
-    },
-
-    startCallTimeout() {
-      this.clearCallTimeout();
-      this.callTimeoutTimer = setTimeout(() => {
-        if (["requesting", "ringing"].includes(this.callStatus)) {
-          this.handleCallError("Không có phản hồi từ người dùng", true);
-        }
-      }, 30000);
-    },
-
-    endCall(sendSignal = false) {
-      if (sendSignal && this.conversation?._id) {
-        if (this.callStatus === "requesting" && this.isCallInitiator) {
-          socketService.cancelCall(this.conversation._id);
-        } else if (this.callStatus === "ringing" && !this.isCallInitiator) {
-          socketService.rejectCall(this.conversation._id);
-        } else {
-          socketService.endCall(this.conversation._id);
-        }
-      }
-      this.cleanupCall(false);
-    },
-
-    handleCallError(message, sendSignal = false) {
-      if (message) {
-        console.error("[VideoCall] ", message);
-        this.$store.dispatch("setCallError", message);
-      } else {
-        this.$store.dispatch("setCallError", null);
-      }
-
-      if (sendSignal && this.conversation?._id) {
-        const currentStatus = this.callStatus;
-        if (currentStatus === "requesting" && this.isCallInitiator) {
-          socketService.cancelCall(this.conversation._id);
-        } else if (currentStatus === "ringing" && !this.isCallInitiator) {
-          socketService.rejectCall(this.conversation._id);
-        } else {
-          socketService.endCall(this.conversation._id);
-        }
-      }
-
-      this.cleanupCall(false);
-    },
-
-    cleanupCall(sendSignal = false) {
-      this.clearCallTimeout();
-
-      if (sendSignal && this.conversation?._id) {
-        socketService.endCall(this.conversation._id);
-      }
-
-      if (this.peerConnection) {
-        try {
-          this.peerConnection.ontrack = null;
-          this.peerConnection.onicecandidate = null;
-          this.peerConnection.onconnectionstatechange = null;
-          this.peerConnection.close();
-        } catch (error) {
-          console.error("cleanupCall close peer error:", error);
-        }
-      }
-
-      this.peerConnection = null;
-
-      if (this.localStream) {
-        this.localStream.getTracks().forEach((track) => track.stop());
-      }
-
-      if (this.remoteStream) {
-        this.remoteStream.getTracks?.().forEach((track) => track.stop());
-      }
-
-      if (this.$refs.localVideo) {
-        this.$refs.localVideo.srcObject = null;
-      }
-
-      if (this.$refs.remoteVideo) {
-        this.$refs.remoteVideo.srcObject = null;
-      }
-
-      this.localStream = null;
-      this.remoteStream = null;
-      this.isCallModalVisible = false;
-      this.isCallInitiator = false;
-      this.isAudioMuted = false;
-      this.isVideoDisabled = false;
-      this.incomingCall = null;
-      this.iceCandidateQueue = [];
-      this.callStatus = "idle";
-      this.$store.dispatch("resetCallState");
-    },
-
     setupSocketListeners() {
-      console.log(
-        "🎧 Setting up socket listeners for conversation:",
-        this.conversation._id
-      );
-
+      console.log('🎧 Setting up socket listeners for conversation:', this.conversation._id)
+      
       // Kiểm tra socket đã connect chưa
       if (!socketService.getConnectionStatus()) {
-        console.warn("⚠️ Socket not connected yet, attempting to connect...");
-        socketService.connect();
-
+        console.warn('⚠️ Socket not connected yet, attempting to connect...')
+        socketService.connect()
+        
         // Đợi socket connect xong rồi setup listener
         setTimeout(() => {
           if (socketService.getConnectionStatus()) {
-            console.log("✅ Socket connected, setting up listener");
-            socketService.onNewMessage(this.handleNewMessage);
+            socketService.onNewMessage(this.handleNewMessage)
+            socketService.onMessageReactionUpdated(this.handleReactionUpdate)
           } else {
-            console.error("❌ Socket connection failed");
+            console.error('❌ Socket connection failed')
           }
-        }, 1000);
+        }, 1000)
       } else {
         // Socket đã connect, setup listener ngay
-        socketService.onNewMessage(this.handleNewMessage);
+        socketService.onNewMessage(this.handleNewMessage)
+        socketService.onMessageReactionUpdated(this.handleReactionUpdate)
+        
+        // Listen for messages read updates
+        socketService.on('messagesRead', (data) => {
+          if (data.conversationId === this.conversationId) {
+            // Update readBy for all affected messages
+            data.messages.forEach(updatedMsg => {
+              const msgIndex = this.messages.findIndex(m => m._id === updatedMsg._id);
+              if (msgIndex !== -1) {
+                this.messages[msgIndex].readBy = updatedMsg.readBy;
+              }
+            });
+          }
+        });
+      }
+    },
+
+    handleReactionUpdate(data) {
+      console.log('👍 Reaction update received:', data)
+      const { messageId, reactions, userId } = data
+      
+      console.log('🔍 [Frontend] Raw reactions from socket:', JSON.stringify(reactions, null, 2))
+      
+      // Find and update message
+      const message = this.messages.find(m => m._id === messageId)
+      if (message) {
+        // Convert backend format to frontend format
+        message.reactions = reactions.map(r => {
+          const user = r.user || {}
+          console.log('🔍 [Frontend] Processing user:', user)
+          const userName = user.displayName || 
+                          (user.email ? user.email.split('@')[0] : null) ||
+                          'Unknown User'
+          
+          console.log('🔍 [Frontend] Mapped userName:', userName)
+          
+          return {
+            userId: user._id || r.user,
+            userName: userName,
+            userAvatar: user.profilePicture || null,
+            emoji: r.emoji
+          }
+        })
+        
+        console.log('🔍 [Frontend] Final message.reactions:', message.reactions)
+        
+        // Show floating emoji if someone else reacted
+        if (userId && userId !== this.currentUserId) {
+          const userReaction = reactions.find(r => 
+            (r.user?._id || r.user) === userId
+          )
+          if (userReaction) {
+            this.createFloatingEmoji(userReaction.emoji, null)
+          }
+        }
       }
     },
 
     handleNewMessage(data) {
-      console.log("📨 New message received in ChatPopup:", data);
-
+      
       // Normalize data structure
-      let message, conversationId;
-
+      let message, conversationId
+      
       // Preferred format: { conversationId: 'xxx', message: {...} }
       if (data.conversationId && data.message) {
-        message = data.message;
-        conversationId = data.conversationId;
+        message = data.message
+        conversationId = data.conversationId
       }
       // Legacy format: message sent directly (with conversation field)
       else if (data._id) {
-        message = data;
-        conversationId = data.conversation || data.conversationId;
+        message = data
+        conversationId = data.conversation || data.conversationId
       }
       // Invalid format
       else {
-        console.error("❌ Invalid message data received:", data);
-        return;
+        console.error('❌ Invalid message data received:', data)
+        return
       }
-
+      
       // Validate message structure
       if (!message || !message._id) {
-        console.error("❌ Invalid message structure:", message);
-        return;
+        console.error('❌ Invalid message structure:', message)
+        return
       }
-
+      
       // Chỉ xử lý tin nhắn thuộc conversation hiện tại
       if (conversationId !== this.conversation._id) {
-        console.log("⏭️ Message not for this conversation, ignoring");
-        return;
+        return
       }
-
+      
       // Kiểm tra tin nhắn đã tồn tại chưa (tránh duplicate)
-      const exists = this.messages.some((m) => m && m._id === message._id);
+      const exists = this.messages.some(m => m && m._id === message._id)
       if (exists) {
-        console.log("⏭️ Message already exists, ignoring");
-        return;
+        return
       }
-
+      
       // Kiểm tra nếu đây là tin nhắn của chính mình (đã có từ optimistic update)
-      const isSentByMe =
-        message.sender?._id?.toString() === this.currentUserId?.toString();
+      const isSentByMe = message.sender?._id?.toString() === this.currentUserId?.toString()
       if (isSentByMe) {
         // Kiểm tra xem có tin nhắn temp nào không
-        const tempIndex = this.messages.findIndex((m) => m && m.isTemp);
+        const tempIndex = this.messages.findIndex(m => m && m.isTemp)
         if (tempIndex !== -1) {
           // Thay tin nhắn temp bằng tin nhắn thật
-          console.log(
-            "🔄 Replacing temp message with real message from socket"
-          );
-          this.messages.splice(tempIndex, 1, message);
-
+          this.messages.splice(tempIndex, 1, message)
+          
           // Scroll to bottom
           this.$nextTick(() => {
-            this.scrollToBottom();
-          });
-          return;
+            this.scrollToBottom()
+          })
+          return
         }
       }
 
-      console.log("✅ Adding new message to popup:", message);
-
+      
+      // Đảm bảo message có sender đầy đủ
+      if (!message.sender || typeof message.sender === 'string') {
+        // Nếu sender là string hoặc không tồn tại, tạo object sender
+        const currentUser = this.$store.state.user
+        const senderId = message.sender || message.sender?._id
+        
+        message.sender = {
+          _id: senderId,
+          displayName: senderId === currentUser._id ? currentUser.displayName : 'Unknown',
+          profilePicture: senderId === currentUser._id ? currentUser.profilePicture : null
+        }
+      } else if (!message.sender.displayName || !message.sender._id) {
+        // Sender là object nhưng thiếu thông tin
+        const currentUser = this.$store.state.user
+        message.sender._id = message.sender._id || currentUser._id
+        message.sender.displayName = message.sender.displayName || currentUser.displayName
+        message.sender.profilePicture = message.sender.profilePicture || currentUser.profilePicture
+      }
+      
+      // Đảm bảo message có readBy
+      if (!message.readBy) {
+        message.readBy = [];
+      }
+      
       // Thêm tin nhắn mới vào danh sách
-      this.messages.push(message);
-
+      this.messages.push(message)
+      
       // Scroll to bottom
       this.$nextTick(() => {
-        this.scrollToBottom();
-      });
-
+        this.scrollToBottom()
+      })
+      
       // Đánh dấu đã đọc nếu popup đang mở
       if (!this.isMinimized) {
-        this.markConversationAsRead();
+        this.markConversationAsRead()
       }
     },
 
     async markConversationAsRead() {
       try {
-        await MessageAPI.markAsRead(this.conversation._id);
+        await MessageAPI.markAsRead(this.conversation._id)
         // Cập nhật lại store để refresh unread count
-        this.$store.dispatch("loadConversations");
+        this.$store.dispatch('loadConversations')
       } catch (error) {
-        console.error("Mark as read error:", error);
+        console.error('Mark as read error:', error)
       }
     },
 
     async loadMessages() {
-      if (!this.conversation?._id) return;
-
-      this.loading = true;
+      if (!this.conversation?._id) return
+      
+      this.loading = true
       try {
-        const response = await MessageAPI.getMessages(this.conversation._id);
+        const response = await MessageAPI.getMessages(this.conversation._id)
         if (response.status === 200) {
-          this.messages = response.data.messages || [];
-
-          // Scroll to bottom sau khi load
+          // Map messages với reactions đúng format
+          this.messages = (response.data.messages || []).map(msg => ({
+            ...msg,
+            reactions: (msg.reactions || []).map(r => {
+              const user = r.user || {}
+              const userName = user.displayName || 
+                              (user.email ? user.email.split('@')[0] : null) ||
+                              'Unknown User'
+              
+              return {
+                userId: user._id || r.user,
+                userName: userName,
+                userAvatar: user.profilePicture || null,
+                emoji: r.emoji
+              }
+            })
+          }))
+          
+          // Scroll to bottom sau khi load - với nhiều lần thử
           this.$nextTick(() => {
-            this.scrollToBottom();
-          });
+            console.log('🔄 [loadMessages] Messages loaded, scrolling...');
+            this.scrollToBottom()
+            
+            // Thử lại sau 300ms để đảm bảo DOM render xong
+            setTimeout(() => {
+              console.log('🔄 [loadMessages] 2nd scroll attempt');
+              this.scrollToBottom()
+            }, 300)
+            
+            // Thử lại lần cuối sau 600ms
+            setTimeout(() => {
+              console.log('🔄 [loadMessages] Final scroll attempt');
+              this.scrollToBottom()
+            }, 600)
+          })
         }
-
+        
         // Đánh dấu đã đọc ngay khi load messages
-        await this.markConversationAsRead();
+        await this.markConversationAsRead()
       } catch (error) {
-        console.error("Load messages error:", error);
+        console.error('Load messages error:', error)
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
 
     async sendMessage() {
-      if (!this.messageInput.trim() && !this.selectedFile) return;
+      if (!this.messageInput.trim() && !this.selectedFile) return
 
-      const currentUser = this.$store.state.user;
-      const tempMessageContent = this.messageInput.trim();
-      const tempFile = this.selectedFile;
+      const currentUser = this.$store.state.user
+      const tempMessageContent = this.messageInput.trim()
+      const tempFile = this.selectedFile
 
       // Clear input ngay lập tức để UX mượt hơn
-      this.messageInput = "";
-      this.selectedFile = null;
+      this.messageInput = ''
+      this.selectedFile = null
 
       try {
         const messageData = {
           content: tempMessageContent,
-          messageType: tempFile
-            ? tempFile.type.startsWith("image/")
-              ? "image"
-              : "file"
-            : "text",
-          file: tempFile,
-        };
+          messageType: tempFile ? (tempFile.type.startsWith('image/') ? 'image' : 'file') : 'text',
+          file: tempFile
+        }
 
         // Tạo tin nhắn tạm thời để hiển thị ngay
         const tempMessage = {
-          _id: "temp-" + Date.now(),
+          _id: 'temp-' + Date.now(),
           content: tempMessageContent,
           messageType: messageData.messageType,
+          file: tempFile ? tempFile.name : null,
+          originalFileName: tempFile ? tempFile.name : null,
           sender: {
             _id: currentUser._id,
             displayName: currentUser.displayName,
-            profilePicture: currentUser.profilePicture,
+            profilePicture: currentUser.profilePicture
           },
+          readBy: [{ user: currentUser._id }],
           createdAt: new Date().toISOString(),
-          isTemp: true,
-        };
+          isTemp: true
+        }
 
         // Thêm tin nhắn tạm vào danh sách
-        this.messages.push(tempMessage);
-
+        this.messages.push(tempMessage)
+        
         // Scroll ngay lập tức
         this.$nextTick(() => {
-          this.scrollToBottom();
-        });
+          this.scrollToBottom()
+        })
 
-        const response = await MessageAPI.sendMessage(
-          this.conversation._id,
-          messageData
-        );
-
+        const response = await MessageAPI.sendMessage(this.conversation._id, messageData)
+        
         if (response.status === 200 || response.status === 201) {
           // Socket sẽ tự động thêm tin nhắn qua handleNewMessage
           // Chỉ cần xóa temp message
-          const tempIndex = this.messages.findIndex(
-            (m) => m._id === tempMessage._id
-          );
+          const tempIndex = this.messages.findIndex(m => m._id === tempMessage._id)
           if (tempIndex !== -1) {
-            this.messages.splice(tempIndex, 1);
+            this.messages.splice(tempIndex, 1)
           }
-
+          
           // Nếu socket chưa thêm (chậm), thêm thủ công
-          const socketAdded = this.messages.some(
-            (m) => m._id === response.data._id
-          );
+          const socketAdded = this.messages.some(m => m._id === response.data._id)
           if (!socketAdded) {
             const newMessage = {
               ...response.data,
               sender: response.data.sender || {
                 _id: currentUser._id,
                 displayName: currentUser.displayName,
-                profilePicture: currentUser.profilePicture,
-              },
-            };
-
-            this.messages.push(newMessage);
-
+                profilePicture: currentUser.profilePicture
+              }
+            }
+            
+            this.messages.push(newMessage)
+            
             // Scroll lại sau khi thêm tin nhắn thật
             this.$nextTick(() => {
-              this.scrollToBottom();
-            });
+              this.scrollToBottom()
+            })
           }
-
+          
           // Cập nhật store
-          this.$store.dispatch("loadConversations");
+          this.$store.dispatch('loadConversations')
         }
       } catch (error) {
-        console.error("Send message error:", error);
+        console.error('Send message error:', error)
         // Xóa tin nhắn tạm nếu gửi thất bại
-        const tempIndex = this.messages.findIndex((m) => m.isTemp);
+        const tempIndex = this.messages.findIndex(m => m.isTemp)
         if (tempIndex !== -1) {
-          this.messages.splice(tempIndex, 1);
+          this.messages.splice(tempIndex, 1)
         }
         // Khôi phục input nếu gửi thất bại
-        this.messageInput = tempMessageContent;
-        this.selectedFile = tempFile;
+        this.messageInput = tempMessageContent
+        this.selectedFile = tempFile
       }
     },
 
     toggleMinimize() {
-      this.isMinimized = !this.isMinimized;
+      this.isMinimized = !this.isMinimized
     },
 
     closeChat() {
-      this.$emit("close");
+      this.$emit('close')
     },
-
+    
     // GROUP CHAT METHODS
     showGroupMembers() {
-      this.showMembersModal = true;
+      this.showMembersModal = true
     },
-
+    
     handleConversationRefreshed(updatedConversation) {
-      console.log("🔄 [ChatPopup] Conversation refreshed, updating...");
+      console.log('🔄 [ChatPopup] Conversation refreshed, updating...');
       // Update the local conversation object - but since it's a prop, we need to emit to parent
-      this.$emit("conversation-updated", updatedConversation);
+      this.$emit('conversation-updated', updatedConversation);
     },
-
+    
     async handleMembersUpdated(updatedConversation) {
       // Cập nhật conversation với thông tin mới
-      this.$emit("conversation-updated", updatedConversation);
-      await this.$store.dispatch("loadConversations");
+      this.$emit('conversation-updated', updatedConversation)
+      await this.$store.dispatch('loadConversations')
     },
-
+    
     async handleMemberRemoved(memberId) {
       // Reload conversation để cập nhật danh sách members
-      await this.$store.dispatch("loadConversations");
-
+      await this.$store.dispatch('loadConversations')
+      
       // Nếu user hiện tại bị xóa, đóng chat
       if (memberId === this.currentUserId) {
-        this.closeChat();
+        this.closeChat()
       }
     },
-
+    
     async handleMemberPromoted(memberId) {
       // Reload conversation để cập nhật admins
-      await this.$store.dispatch("loadConversations");
+      await this.$store.dispatch('loadConversations')
     },
-
+    
     handleLeftGroup() {
       // Đóng chat và reload conversations
-      this.$store.dispatch("loadConversations");
-      this.closeChat();
+      this.$store.dispatch('loadConversations')
+      this.closeChat()
     },
 
     goToProfile() {
       // Chỉ cho phép đi đến profile nếu không phải group chat
-      if (this.conversation?.isGroup) return;
-
-      const userId = this.conversation?.participant?._id;
+      if (this.conversation?.isGroup) return
+      
+      const userId = this.conversation?.participant?._id
       if (userId) {
         // Điều hướng đến trang profile
-        this.$router.push(`/profile/${userId}`);
+        this.$router.push(`/profile/${userId}`)
       }
     },
 
     scrollToBottom() {
-      // Sử dụng messagesEnd anchor để scroll
-      if (this.$refs.messagesEnd) {
-        this.$refs.messagesEnd.scrollIntoView({
-          behavior: "smooth",
-          block: "end",
+      console.log('📜 [ChatPopup] Scrolling to bottom...');
+      
+      // Dùng messagesContainer với scrollTop
+      if (this.$refs.messagesContainer) {
+        const container = this.$refs.messagesContainer;
+        console.log('✅ Using messagesContainer ref, scrollHeight:', container.scrollHeight, 'clientHeight:', container.clientHeight);
+        
+        // Force reflow để đảm bảo layout đã hoàn thành
+        void container.offsetHeight;
+        
+        // Dùng requestAnimationFrame để scroll sau khi browser paint
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight;
+          console.log('📍 [RAF] Scrolled to:', container.scrollTop);
+          
+          // Double check sau 50ms
+          setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+            console.log('📍 [Timeout] Final scroll to:', container.scrollTop);
+          }, 50);
         });
       }
-
-      // Fallback: Dùng scrollTop nếu messagesEnd không tồn tại
-      if (this.$refs.messagesContainer && !this.$refs.messagesEnd) {
-        setTimeout(() => {
-          this.$refs.messagesContainer.scrollTop =
-            this.$refs.messagesContainer.scrollHeight;
-        }, 100);
+      
+      // Fallback: Sử dụng messagesEnd anchor
+      if (this.$refs.messagesEnd) {
+        console.log('✅ Also using messagesEnd ref');
+        this.$refs.messagesEnd.scrollIntoView({ behavior: 'instant', block: 'end' })
       }
     },
 
     isOwnMessage(message) {
-      if (!message || !message.sender || !this.currentUserId) return false;
-
-      const senderId = message.sender._id || message.sender;
-      const currentId = this.currentUserId;
-
+      if (!message || !message.sender || !this.currentUserId) return false
+      
+      const senderId = message.sender._id || message.sender
+      const currentId = this.currentUserId
+      
       // So sánh cả dạng string và object
-      return senderId?.toString() === currentId?.toString();
+      return senderId?.toString() === currentId?.toString()
     },
 
     triggerFileInput() {
-      this.$refs.fileInput.click();
+      this.$refs.fileInput.click()
     },
 
     triggerImageInput() {
-      this.$refs.imageInput.click();
+      this.$refs.imageInput.click()
+    },
+    
+    // Reaction Methods
+    startLongPress(event, message) {
+      if (!message) return
+      
+      // Prevent text selection
+      event.preventDefault()
+      
+      this.selectedMessage = message
+      this.lastEvent = event // Save event for floating animation
+      
+      this.longPressTimer = setTimeout(() => {
+        this.showReactionPickerAtPosition(event)
+      }, this.longPressDuration)
+    },
+    
+    cancelLongPress() {
+      if (this.longPressTimer) {
+        clearTimeout(this.longPressTimer)
+        this.longPressTimer = null
+      }
+    },
+    
+    showReactionPickerAtPosition(event) {
+      const rect = event.target.closest('.message-bubble').getBoundingClientRect()
+      this.reactionPickerPosition = {
+        top: rect.top - 60,
+        left: rect.left + (rect.width / 2) - 130
+      }
+      this.showReactionPicker = true
+      
+      // Delay adding click outside listener to prevent immediate close
+      setTimeout(() => {
+        document.addEventListener('click', this.handleClickOutside)
+      }, 100)
+    },
+    
+    handleClickOutside(event) {
+      if (this.showReactionPicker) {
+        const picker = document.querySelector('.reaction-picker')
+        const messageBubble = event.target.closest('.message-bubble')
+        const isClickInsidePicker = picker && picker.contains(event.target)
+        
+        // Chỉ đóng khi click bên ngoài cả picker VÀ message bubble
+        if (!isClickInsidePicker && !messageBubble) {
+          this.showReactionPicker = false
+          this.selectedMessage = null
+          document.removeEventListener('click', this.handleClickOutside)
+        }
+      }
+    },
+    
+    handleReactionSelect(emoji) {
+      if (this.selectedMessage) {
+        // Check if user already reacted with this emoji
+        const currentUserId = this.currentUserId
+        const existingReaction = this.selectedMessage.reactions?.find(r => r.userId === currentUserId)
+        const newReaction = existingReaction?.emoji === emoji ? null : emoji
+        
+        this.applyReaction(this.selectedMessage, newReaction)
+      }
+      this.showReactionPicker = false
+      this.selectedMessage = null
+      document.removeEventListener('click', this.handleClickOutside)
+    },
+    
+    applyReaction(message, reaction) {
+      // Create floating emoji animation
+      if (reaction) {
+        this.createFloatingEmoji(reaction, this.lastEvent)
+      }
+      
+      // Update local message object immediately for instant feedback
+      if (!message.reactions) {
+        message.reactions = []
+      }
+      
+      const currentUserId = this.currentUserId
+      const currentUser = this.$store?.state?.user
+      const existingReactionIndex = message.reactions.findIndex(
+        r => r.userId === currentUserId
+      )
+      
+      if (reaction) {
+        // Add or update reaction
+        const reactionObj = {
+          userId: currentUserId,
+          userName: currentUser?.displayName || currentUser?.email || 'Bạn',
+          userAvatar: currentUser?.profilePicture || null,
+          emoji: reaction
+        }
+        
+        if (existingReactionIndex !== -1) {
+          // Update existing - Vue 3 auto tracks
+          message.reactions[existingReactionIndex] = reactionObj
+        } else {
+          // Add new
+          message.reactions.push(reactionObj)
+        }
+      } else {
+        // Remove reaction
+        if (existingReactionIndex !== -1) {
+          message.reactions.splice(existingReactionIndex, 1)
+        }
+      }
+      
+      // Call API to save reaction to database
+      MessageAPI.addReaction(message._id, reaction)
+        .then(response => {
+          console.log('Reaction saved:', response.data)
+        })
+        .catch(error => {
+          console.error('Failed to save reaction:', error)
+          // Rollback on error
+          if (reaction) {
+            const idx = message.reactions.findIndex(r => r.userId === currentUserId)
+            if (idx !== -1) message.reactions.splice(idx, 1)
+          }
+        })
+      
+      console.log('Applied reaction:', reaction, 'to message:', message._id)
+      console.log('Reactions after:', message.reactions)
+    },
+    
+    createFloatingEmoji(emoji, clickEvent) {
+      const id = Date.now() + Math.random()
+      const floatingEmoji = {
+        id,
+        emoji,
+        x: clickEvent ? clickEvent.clientX : window.innerWidth / 2,
+        y: clickEvent ? clickEvent.clientY : window.innerHeight / 2
+      }
+      
+      this.floatingEmojis.push(floatingEmoji)
+      
+      // Remove after animation completes
+      setTimeout(() => {
+        const index = this.floatingEmojis.findIndex(e => e.id === id)
+        if (index !== -1) {
+          this.floatingEmojis.splice(index, 1)
+        }
+      }, 1000)
+    },
+    
+    getMessageReactions(message) {
+      if (!message.reactions || message.reactions.length === 0) {
+        return []
+      }
+      
+      // Convert backend format to frontend format if needed
+      return message.reactions.map(r => {
+        // Backend format: { user: {_id, displayName, profilePicture}, emoji }
+        // Frontend format: { userId, userName, userAvatar, emoji }
+        if (r.user && typeof r.user === 'object') {
+          return {
+            userId: r.user._id,
+            userName: r.user.displayName || r.user.email || 'Unknown',
+            userAvatar: r.user.profilePicture || null,
+            emoji: r.emoji
+          }
+        }
+        // Already in frontend format
+        return r
+      })
+    },
+    
+    showMessageReactors(message) {
+      this.selectedMessageForReactors = message
+      this.showReactorsModal = true
     },
 
     handleFileSelect(event) {
-      this.selectedFile = event.target.files[0];
+      this.selectedFile = event.target.files[0]
       if (this.selectedFile) {
-        this.sendMessage();
+        this.sendMessage()
       }
     },
 
     handleImageSelect(event) {
-      this.selectedFile = event.target.files[0];
+      this.selectedFile = event.target.files[0]
       if (this.selectedFile) {
-        this.sendMessage();
+        this.sendMessage()
       }
     },
 
-    formatTime(timestamp) {
-      if (!timestamp) return "";
-
-      const date = new Date(timestamp);
-      const hours = date.getHours().toString().padStart(2, "0");
-      const minutes = date.getMinutes().toString().padStart(2, "0");
-
-      return `${hours}:${minutes}`;
+    downloadFile(message) {
+      if (!message.file) return;
+      
+      const token = localStorage.getItem('token');
+      const filename = message.file;
+      const downloadUrl = `http://localhost:3000/api/messages/download/${filename}`;
+      
+      // Add auth header via fetch and blob
+      fetch(downloadUrl, {
+        headers: { token }
+      })
+      .then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = message.originalFileName || message.file;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(error => {
+        console.error('Download error:', error);
+        this.showErrorMessage('Không thể tải file');
+      });
     },
+
+    formatTime(timestamp) {
+      if (!timestamp) return ''
+      
+      const date = new Date(timestamp)
+      const hours = date.getHours().toString().padStart(2, '0')
+      const minutes = date.getMinutes().toString().padStart(2, '0')
+      
+      return `${hours}:${minutes}`
+    },
+
+    showContextMenu(event, message) {
+      if (!this.isOwnMessage(message)) return;
+      
+      this.contextMessage = message;
+      
+      // Calculate position to prevent menu from going off-screen
+      const menuWidth = 150;
+      const menuHeight = 100;
+      let x = event.clientX;
+      let y = event.clientY;
+      
+      // If too close to right edge, position menu to the left
+      if (x + menuWidth > window.innerWidth) {
+        x = event.clientX - menuWidth;
+      }
+      
+      // If too close to bottom, position menu above
+      if (y + menuHeight > window.innerHeight) {
+        y = event.clientY - menuHeight;
+      }
+      
+      this.menuPosition = { x, y };
+      this.showMessageMenu = true;
+
+      const closeMenu = () => {
+        this.showMessageMenu = false;
+        document.removeEventListener('click', closeMenu);
+      };
+      setTimeout(() => {
+        document.addEventListener('click', closeMenu);
+      }, 0);
+    },
+
+    canEdit(message) {
+      if (!message || message.messageType !== 'text') return false;
+      if (message.readBy && message.readBy.length > 1) return false;
+      return true;
+    },
+
+    editMessage() {
+      this.showMessageMenu = false;
+      this.editingMessageId = this.contextMessage._id;
+      this.editingContent = this.contextMessage.content || '';
+      this.showEditModal = true;
+      
+      this.$nextTick(() => {
+        if (this.$refs.editTextarea) {
+          this.$refs.editTextarea.focus();
+        }
+      });
+    },
+
+    cancelEdit() {
+      this.showEditModal = false;
+      this.editingContent = '';
+      this.editingMessageId = null;
+    },
+
+    async saveEdit() {
+      if (!this.editingContent.trim() || !this.editingMessageId) return;
+
+      try {
+        await MessageAPI.editMessage(this.editingMessageId, this.editingContent.trim());
+        
+        const messageIndex = this.messages.findIndex(m => m._id === this.editingMessageId);
+        if (messageIndex !== -1) {
+          this.messages[messageIndex].content = this.editingContent.trim();
+          this.messages[messageIndex].isEdited = true;
+        }
+
+        this.cancelEdit();
+      } catch (error) {
+        console.error('Edit message error:', error);
+        // Show error in a better way
+        this.showErrorMessage(error.response?.data?.error || 'Không thể sửa tin nhắn');
+      }
+    },
+
+    confirmDelete() {
+      this.showMessageMenu = false;
+      this.showDeleteModal = true;
+    },
+
+    async deleteMessage() {
+      if (!this.contextMessage) return;
+
+      try {
+        await MessageAPI.deleteMessage(this.contextMessage._id);
+        
+        const messageIndex = this.messages.findIndex(m => m._id === this.contextMessage._id);
+        if (messageIndex !== -1) {
+          this.messages.splice(messageIndex, 1);
+        }
+
+        this.showDeleteModal = false;
+
+      } catch (error) {
+        console.error('Delete message error:', error);
+        this.showErrorMessage('Không thể xóa tin nhắn');
+        this.showDeleteModal = false;
+      }
+    },
+
+    showErrorMessage(message) {
+      // Simple error display - can be enhanced with toast/snackbar later
+      console.error(message);
+      // Could emit to parent or show in modal
+    },
+
+    toggleEmojiPicker() {
+      this.showEmojiPicker = !this.showEmojiPicker;
+      if (!this.showEmojiPicker) {
+        this.emojiSearch = '';
+      }
+      if (this.showEmojiPicker) {
+        this.showAttachMenu = false;
+      }
+    },
+
+    closeEmojiPicker() {
+      this.showEmojiPicker = false;
+      this.emojiSearch = '';
+    },
+
+    toggleAttachMenu() {
+      this.showAttachMenu = !this.showAttachMenu;
+      if (this.showAttachMenu) {
+        this.showEmojiPicker = false;
+      }
+    },
+
+    handleClickOutside(event) {
+      const target = event.target;
+      const clickedInsidePopup = this.$el && this.$el.contains(target);
+      
+      if (!clickedInsidePopup) {
+        this.showAttachMenu = false;
+      }
+    },
+
+    insertEmoji(emoji) {
+      const input = this.$refs.chatInput;
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      
+      this.messageInput = this.messageInput.substring(0, start) + emoji + this.messageInput.substring(end);
+      
+      this.$nextTick(() => {
+        input.focus();
+        const newPos = start + emoji.length;
+        input.setSelectionRange(newPos, newPos);
+      });
+    },
+
+    selectCategory(categoryId) {
+      this.activeCategory = categoryId;
+      this.emojiSearch = '';
+    },
+
+    filterEmojis() {
+      // Trigger computed property update
+    },
+
+    getCurrentCategoryName() {
+      const category = this.categories.find(c => c.id === this.activeCategory);
+      return category ? category.name : '';
+    }
   },
-};
+
+  computed: {
+    filteredEmojis() {
+      const search = this.emojiSearch.trim().toLowerCase();
+      
+      if (!search) {
+        // No search, return current category
+        return this.emojiData[this.activeCategory] || [];
+      }
+      
+      // Search by category name
+      const matchedCategories = this.categories.filter(cat => 
+        cat.name.toLowerCase().includes(search)
+      );
+      
+      if (matchedCategories.length > 0) {
+        // Return emojis from all matched categories
+        return matchedCategories.flatMap(cat => this.emojiData[cat.id] || []);
+      }
+      
+      // If no category match, return current category
+      return this.emojiData[this.activeCategory] || [];
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -1430,6 +1458,7 @@ export default {
 .chat-messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem;
   background: #f8f9fa;
 }
@@ -1478,9 +1507,7 @@ export default {
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 .messages-list {
@@ -1493,10 +1520,22 @@ export default {
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .message-wrapper.own-message {
   flex-direction: row-reverse;
+}
+
+.message-with-reactions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 75%;
+}
+
+.message-wrapper.own-message .message-with-reactions {
+  align-items: flex-end;
 }
 
 .message-avatar {
@@ -1508,17 +1547,93 @@ export default {
 }
 
 .message-bubble {
-  max-width: 70%;
+  max-width: 100%;
   padding: 0.625rem 0.875rem;
   border-radius: 18px;
   background: white;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   position: relative;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.message-bubble:hover .message-more-btn {
+  opacity: 1;
+  visibility: visible;
+}
+
+.message-more-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.message-more-btn:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.message-more-btn i {
+  font-size: 16px;
+  color: white;
 }
 
 .message-bubble.own-bubble {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+}
+
+.message-reaction {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  background: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 2px solid white;
+  animation: popIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.message-reaction:hover {
+  transform: scale(1.2);
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .message-text {
@@ -1545,6 +1660,34 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.message-file:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.message-file i.material-icons {
+  font-size: 20px;
+}
+
+.message-file .download-icon {
+  margin-left: auto;
+  font-size: 18px;
+  opacity: 0.7;
+}
+
+.message-file span {
+  font-size: 0.875rem;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-input {
@@ -1556,23 +1699,71 @@ export default {
   background: white;
 }
 
-.input-actions {
-  display: flex;
-  gap: 0.25rem;
+/* Plus Menu */
+.plus-menu-wrapper {
+  position: relative;
+  flex-shrink: 0;
 }
 
-.action-icon {
-  font-size: 20px;
+.plus-icon {
+  font-size: 24px;
   color: #667eea;
   cursor: pointer;
-  padding: 0.375rem;
-  border-radius: 50%;
   transition: all 0.2s ease;
 }
 
-.action-icon:hover {
+.plus-icon:hover {
+  transform: rotate(90deg) scale(1.1);
+}
+
+.attach-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  min-width: 150px;
+  z-index: 1000;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.attach-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.attach-menu-item:hover {
   background: #f7fafc;
-  transform: scale(1.1);
+}
+
+.attach-menu-item i {
+  font-size: 20px;
+  color: #667eea;
+}
+
+.attach-menu-item span {
+  font-size: 14px;
+  color: #334155;
+  font-weight: 500;
 }
 
 .message-input {
@@ -1589,233 +1780,94 @@ export default {
   color: #a0aec0;
 }
 
-.send-btn {
+/* Emoji Icon */
+.emoji-icon {
+  font-size: 22px;
+  color: #667eea;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+}
+
+.emoji-icon:hover {
+  transform: scale(1.1);
+}
+
+/* Send Icon */
+.send-icon {
   font-size: 22px;
   color: #cbd5e0;
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0.375rem;
   border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.send-btn.active {
+.send-icon.active {
   color: #667eea;
 }
 
-.send-btn:hover.active {
+.send-icon:hover.active {
   background: #f7fafc;
   transform: scale(1.1);
 }
 
-.call-overlay {
+/* Floating Emoji Animation */
+.floating-emojis {
   position: fixed;
-  inset: 0;
-  background: rgba(17, 24, 39, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 1rem;
-}
-
-.call-dialog {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  width: 320px;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.call-dialog-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.call-icon {
-  font-size: 36px;
-  color: #667eea;
-}
-
-.call-dialog-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.call-dialog-title {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: #1a202c;
-}
-
-.call-dialog-subtitle {
-  color: #4a5568;
-  font-size: 0.95rem;
-}
-
-.call-dialog-actions {
-  display: flex;
-  gap: 16px;
-}
-
-.call-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 999px;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  color: #fff;
-}
-
-.call-btn.accept {
-  background: #48bb78;
-}
-
-.call-btn.accept:hover {
-  background: #38a169;
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(56, 161, 105, 0.35);
-}
-
-.call-btn.reject {
-  background: #f56565;
-}
-
-.call-btn.reject:hover {
-  background: #e53e3e;
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(229, 62, 62, 0.35);
-}
-
-.call-window {
-  width: min(720px, 100%);
-  height: min(480px, 80vh);
-  background: #1f2937;
-  border-radius: 18px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.35);
-}
-
-.call-window-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: rgba(31, 41, 55, 0.85);
-  color: #f9fafb;
-}
-
-.call-window-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.call-window-title {
-  font-weight: 600;
-}
-
-.call-window-status {
-  font-size: 0.85rem;
-  color: #cbd5f5;
-}
-
-.call-window-close {
-  background: transparent;
-  border: none;
-  color: #e5e7eb;
-  cursor: pointer;
-  font-size: 20px;
-  line-height: 1;
-  transition: color 0.2s ease;
-}
-
-.call-window-close:hover {
-  color: #ffffff;
-}
-
-.call-video-container {
-  position: relative;
-  flex: 1;
-  background: #111827;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.remote-video {
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  background: #0f172a;
+  pointer-events: none;
+  z-index: 10001;
 }
 
-.local-video {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  width: 180px;
-  height: 120px;
-  object-fit: cover;
-  background: #000;
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.75);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.45);
+.floating-emoji {
+  position: fixed;
+  font-size: 48px;
+  animation: floatUp 1s ease-out forwards;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
 }
 
-.call-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 16px;
-  background: rgba(17, 24, 39, 0.9);
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-60px) scale(1.3) rotate(15deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-120px) scale(0.8) rotate(-10deg);
+  }
 }
 
-.call-control-btn {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
-  background: #374151;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease;
-  font-size: 22px;
+.float-enter-active {
+  animation: floatUp 1s ease-out;
 }
 
-.call-control-btn:hover {
-  background: #4b5563;
-  transform: scale(1.05);
+.float-leave-active {
+  animation: fadeOutFloat 0.3s ease-out;
 }
 
-.call-control-btn.muted {
-  background: #9b2c2c;
-}
-
-.call-control-btn.muted:hover {
-  background: #742a2a;
-}
-
-.call-control-btn.end {
-  background: #ef4444;
-}
-
-.call-control-btn.end:hover {
-  background: #dc2626;
+@keyframes fadeOutFloat {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1824,14 +1876,361 @@ export default {
     width: calc(100% - 40px);
     max-width: 328px;
   }
+}
 
-  .call-window {
-    height: 70vh;
+/* Context Menu */
+.message-context-menu {
+  position: fixed;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  z-index: 10000;
+  min-width: 150px;
+}
+
+.message-context-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.message-context-menu .menu-item:hover {
+  background: #f3f4f6;
+}
+
+.message-context-menu .menu-item.delete {
+  color: #ef4444;
+}
+
+.message-context-menu .menu-item.delete:hover {
+  background: #fee2e2;
+}
+
+.message-context-menu .menu-item i {
+  font-size: 20px;
+}
+
+.message-context-menu .menu-item span {
+  font-size: 0.9rem;
+}
+
+/* Edit Modal */
+.edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+}
+
+.edit-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.edit-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.edit-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.edit-modal-header .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.edit-modal-header .close-btn:hover {
+  background: #f3f4f6;
+}
+
+.edit-modal-body {
+  padding: 1.5rem;
+}
+
+.edit-modal-body textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.edit-modal-body textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.edit-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.edit-modal-footer button {
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-modal-footer .btn-cancel {
+  background: #f3f4f6;
+  border: none;
+  color: #374151;
+}
+
+.edit-modal-footer .btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.edit-modal-footer .btn-save {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+}
+
+.edit-modal-footer .btn-save:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.edit-modal-footer .btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Delete button styles */
+.btn-delete {
+  background: #ef4444;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.delete-confirm-modal .edit-modal-body {
+  padding: 20px;
+  text-align: center;
+}
+
+.delete-confirm-modal .edit-modal-body p {
+  margin: 0;
+  font-size: 16px;
+  color: #4b5563;
+}
+
+/* Emoji Picker Modal */
+.emoji-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99999;
+  background: transparent;
+}
+
+.emoji-picker-container {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  width: 350px;
+  max-height: 450px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeInUp 0.2s ease;
+}
+
+.emoji-picker-search {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 8px;
+}
+
+.emoji-picker-search i {
+  color: #9ca3af;
+  font-size: 20px;
+}
+
+.emoji-picker-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.emoji-picker-search input::placeholder {
+  color: #9ca3af;
+}
+
+.emoji-categories {
+  display: flex;
+  padding: 8px 12px;
+  gap: 4px;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+}
+
+.emoji-categories::-webkit-scrollbar {
+  height: 4px;
+}
+
+.emoji-categories::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.category-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.category-btn:hover {
+  background: #f3f4f6;
+}
+
+.category-btn.active {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.emoji-category-title {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.emoji-grid-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  align-content: start;
+}
+
+.emoji-grid-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.emoji-grid-container::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.emoji-grid-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.emoji-grid-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.emoji-item {
+  background: none;
+  border: none;
+  font-size: 28px;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+}
+
+.emoji-item:hover {
+  background: #f3f4f6;
+  transform: scale(1.2);
+}
+
+.emoji-item:active {
+  transform: scale(1.1);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-  .local-video {
-    width: 140px;
-    height: 96px;
+@media (max-width: 768px) {
+  .emoji-picker-container {
+    width: 320px;
+    max-height: 400px;
+  }
+  
+  .emoji-grid-container {
+    grid-template-columns: repeat(7, 1fr);
+  }
+  
+  .emoji-item {
+    font-size: 24px;
   }
 }
 </style>

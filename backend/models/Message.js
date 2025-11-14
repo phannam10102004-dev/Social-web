@@ -29,6 +29,18 @@ const MessageSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  originalFileName: {
+    type: String,
+    default: null
+  },
+  isEdited: {
+    type: Boolean,
+    default: false
+  },
+  editedAt: {
+    type: Date,
+    default: null
+  },
   isRead: {
     type: Boolean,
     default: false
@@ -50,6 +62,21 @@ const MessageSchema = new mongoose.Schema({
   deletedBy: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  }],
+  reactions: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    emoji: {
+      type: String,
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
   }]
 }, {
   timestamps: true

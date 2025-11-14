@@ -25,6 +25,9 @@ const verifyToken = (req, res, next) => {
 router.get('/conversations', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
     
     const conversations = await Conversation.find({
       participants: userId,
@@ -35,7 +38,8 @@ router.get('/conversations', verifyToken, async (req, res) => {
     .populate('createdBy', 'displayName')
     .populate('admins', 'displayName')
     .sort({ lastMessageTime: -1 })
-    .limit(20);
+    .skip(skip)
+    .limit(limit);
 
     // Format data với unread count cho mỗi conversation
     const formattedConversations = await Promise.all(conversations.map(async conv => {
@@ -118,6 +122,8 @@ router.get('/conversations/:conversationId/messages', verifyToken, async (req, r
       deletedBy: { $ne: userId }
     })
     .populate('sender', 'displayName profilePicture')
+    .populate('reactions.user', 'displayName profilePicture email')
+    .populate('readBy.user', '_id displayName')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
@@ -139,16 +145,10 @@ router.post('/conversations/:conversationId/messages', verifyToken, async (req, 
     const userId = req.user.id;
     const conversationId = sanitize(req.params.conversationId);
     
-    console.log('📨 Received message request:', {
-      hasFiles: !!req.files,
-      filesKeys: req.files ? Object.keys(req.files) : [],
-      bodyContent: req.body.content,
-      bodyMessageType: req.body.messageType
-    });
-    
     let content = '';
     let messageType = 'text';
     let fileName = null;
+    let originalFileName = null;
     
     // Xử lý file upload
     if (req.files && req.files.file) {
@@ -162,8 +162,8 @@ router.post('/conversations/:conversationId/messages', verifyToken, async (req, 
       
       // Tạo tên file unique
       const timestamp = Date.now();
-      const originalName = uploadedFile.name;
-      const extension = originalName.split('.').pop();
+      originalFileName = uploadedFile.name;
+      const extension = originalFileName.split('.').pop();
       fileName = `${timestamp}-${Math.random().toString(36).substring(2)}.${extension}`;
       
       // Xác định messageType dựa trên file type
@@ -207,7 +207,12 @@ router.post('/conversations/:conversationId/messages', verifyToken, async (req, 
       sender: userId,
       content: content || '', // Đảm bảo content có giá trị
       messageType,
-      file: fileName
+      file: fileName,
+      originalFileName: originalFileName,
+      readBy: [{
+        user: userId, // Người gửi tự động đã "đọc" tin nhắn của mình
+        readAt: new Date()
+      }]
     });
 
     await newMessage.save();
@@ -218,8 +223,9 @@ router.post('/conversations/:conversationId/messages', verifyToken, async (req, 
       lastMessageTime: new Date()
     });
 
-    // Populate thông tin sender để trả về
+    // Populate thông tin sender và readBy để trả về
     await newMessage.populate('sender', 'displayName profilePicture email');
+    await newMessage.populate('readBy.user', '_id displayName');
 
     // Fallback: Nếu populate không có displayName/profilePicture, lấy từ database trực tiếp
     let senderData = newMessage.sender;
@@ -243,10 +249,12 @@ router.post('/conversations/:conversationId/messages', verifyToken, async (req, 
         content: newMessage.content,
         messageType: newMessage.messageType,
         file: newMessage.file,
+        originalFileName: newMessage.originalFileName,
         sender: senderData,
         senderAvatar: senderData.profilePicture,
         senderId: senderData._id, // Backup field
         senderName: senderData.displayName, // Backup field
+        readBy: newMessage.readBy || [],
         createdAt: newMessage.createdAt,
         conversationId
       }, conversationId);
@@ -266,20 +274,13 @@ router.post('/conversations/:conversationId/messages', verifyToken, async (req, 
           content: newMessage.content,
           messageType: newMessage.messageType,
           file: newMessage.file,
+          originalFileName: newMessage.originalFileName,
           sender: senderData,
           createdAt: newMessage.createdAt,
           conversationId
         }, conversationId, updatedConversation.participants, userId);
       }
     }
-
-    console.log('✅ Message created successfully:', {
-      id: newMessage._id,
-      content: newMessage.content,
-      messageType: newMessage.messageType,
-      file: newMessage.file,
-      sender: newMessage.sender?.displayName
-    });
 
     res.status(201).json(newMessage);
   } catch (error) {
@@ -359,7 +360,7 @@ router.put('/conversations/:conversationId/read', verifyToken, async (req, res) 
     const conversationId = sanitize(req.params.conversationId);
 
     // Đánh dấu tất cả messages của người khác mà user chưa đọc
-    await Message.updateMany(
+    const result = await Message.updateMany(
       {
         conversationId,
         sender: { $ne: userId },
@@ -375,6 +376,24 @@ router.put('/conversations/:conversationId/read', verifyToken, async (req, res) 
         }
       }
     );
+
+    // Emit socket event để cập nhật realtime
+    if (result.modifiedCount > 0) {
+      const io = req.app.get('io');
+      if (io) {
+        // Lấy các messages đã được cập nhật để emit
+        const updatedMessages = await Message.find({
+          conversationId,
+          sender: { $ne: userId },
+          'readBy.user': userId
+        })
+        .populate('readBy.user', '_id displayName')
+        .select('_id readBy');
+
+        // Emit đến conversation room
+        io.emitMessagesRead(conversationId, userId, updatedMessages);
+      }
+    }
 
     res.status(200).json({ message: 'Messages marked as read' });
   } catch (error) {
@@ -455,7 +474,7 @@ router.post('/groups', verifyToken, async (req, res) => {
   }
 });
 
-// POST - Thêm member vào nhóm
+// POST - Thêm member vào nhóm (Thành viên thường cũng có thể thêm)
 router.post('/groups/:conversationId/members', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -472,9 +491,9 @@ router.post('/groups/:conversationId/members', verifyToken, async (req, res) => 
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    // Kiểm tra quyền admin
-    if (!conversation.admins.includes(userId)) {
-      return res.status(403).json({ error: 'Only admins can add members' });
+    // Kiểm tra người dùng có phải là thành viên của nhóm không
+    if (!conversation.participants.includes(userId)) {
+      return res.status(403).json({ error: 'Only group members can add new members' });
     }
 
     // Thêm members mới (không trùng lặp)
@@ -640,6 +659,348 @@ router.post('/groups/:conversationId/leave', verifyToken, async (req, res) => {
     res.status(200).json({ message: 'Left group successfully' });
   } catch (error) {
     console.error('Leave group error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST - Chuyển quyền trưởng nhóm
+router.post('/groups/:conversationId/transfer-ownership', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const conversationId = sanitize(req.params.conversationId);
+    const { newOwnerId } = req.body;
+
+    if (!newOwnerId) {
+      return res.status(400).json({ error: 'New owner ID is required' });
+    }
+
+    const conversation = await Conversation.findById(conversationId);
+    
+    if (!conversation || !conversation.isGroup) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // Chỉ creator mới có thể chuyển quyền
+    if (userId !== conversation.createdBy.toString()) {
+      return res.status(403).json({ error: 'Only group creator can transfer ownership' });
+    }
+
+    // Kiểm tra người nhận có phải là thành viên không
+    if (!conversation.participants.some(p => p.toString() === newOwnerId)) {
+      return res.status(400).json({ error: 'New owner must be a group member' });
+    }
+
+    // Chuyển quyền
+    const oldOwnerId = conversation.createdBy.toString();
+    conversation.createdBy = newOwnerId;
+    
+    // Thêm người mới vào admin nếu chưa có
+    if (!conversation.admins.some(a => a.toString() === newOwnerId)) {
+      conversation.admins.push(newOwnerId);
+    }
+
+    // Xóa người cũ khỏi danh sách admin (trở thành thành viên thường)
+    conversation.admins = conversation.admins.filter(a => a.toString() !== oldOwnerId);
+
+    await conversation.save();
+    await conversation.populate('participants', 'displayName profilePicture email');
+    await conversation.populate('createdBy', 'displayName profilePicture email');
+
+    // Emit socket event
+    const io = req.app.get('io');
+    if (io && io.emitGroupUpdated) {
+      io.emitGroupUpdated(conversation, conversation.participants);
+    }
+
+    res.status(200).json({ 
+      message: 'Ownership transferred successfully',
+      conversation 
+    });
+  } catch (error) {
+    console.error('Transfer ownership error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE - Giải tán nhóm (chỉ creator)
+router.delete('/groups/:conversationId/disband', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const conversationId = sanitize(req.params.conversationId);
+
+    const conversation = await Conversation.findById(conversationId);
+    
+    if (!conversation || !conversation.isGroup) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // Chỉ creator mới có thể giải tán nhóm
+    if (userId !== conversation.createdBy.toString()) {
+      return res.status(403).json({ error: 'Only group creator can disband the group' });
+    }
+
+    // Lưu danh sách participants để emit socket
+    const participants = conversation.participants.map(p => p.toString());
+
+    // Đánh dấu conversation là không active thay vì xóa hẳn
+    conversation.isActive = false;
+    await conversation.save();
+
+    // Emit socket event đến tất cả thành viên
+    const io = req.app.get('io');
+    if (io) {
+      participants.forEach(participantId => {
+        io.to(`user_${participantId}`).emit('groupDisbanded', {
+          conversationId,
+          message: 'Group has been disbanded by the creator'
+        });
+      });
+    }
+
+    res.status(200).json({ message: 'Group disbanded successfully' });
+  } catch (error) {
+    console.error('Disband group error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST - Thêm/sửa/xóa reaction vào message
+router.post('/messages/:messageId/reaction', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const messageId = sanitize(req.params.messageId);
+    const { emoji } = req.body; // null để xóa reaction
+
+    const message = await Message.findById(messageId)
+      .populate('sender', 'displayName profilePicture email');
+    
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Kiểm tra user có quyền react không (phải là thành viên conversation)
+    const conversation = await Conversation.findById(message.conversationId);
+    if (!conversation || !conversation.participants.includes(userId)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (!message.reactions) {
+      message.reactions = [];
+    }
+
+    const existingReactionIndex = message.reactions.findIndex(
+      r => r.user.toString() === userId
+    );
+
+    let action = '';
+    
+    if (emoji) {
+      // Thêm hoặc update reaction
+      if (existingReactionIndex !== -1) {
+        // Update existing reaction
+        message.reactions[existingReactionIndex].emoji = emoji;
+        message.reactions[existingReactionIndex].createdAt = new Date();
+        action = 'updated';
+      } else {
+        // Add new reaction
+        message.reactions.push({
+          user: userId,
+          emoji: emoji
+        });
+        action = 'added';
+      }
+    } else {
+      // Xóa reaction
+      if (existingReactionIndex !== -1) {
+        message.reactions.splice(existingReactionIndex, 1);
+        action = 'removed';
+      }
+    }
+
+    await message.save();
+
+    // Populate reactions để trả về đầy đủ thông tin CHO CẢ API VÀ SOCKET
+    await message.populate('reactions.user', 'displayName profilePicture email');
+
+    console.log('🔍 [Reaction] After populate, reactions:', JSON.stringify(message.reactions, null, 2));
+
+    // Emit socket event đến tất cả người trong conversation
+    const io = req.app.get('io');
+    if (io) {
+      // Đảm bảo reactions đã được populate và lấy thông tin user đầy đủ
+      const populatedReactions = await Promise.all(message.reactions.map(async r => {
+        let user = r.user;
+        
+        // Nếu populate thất bại hoặc thiếu thông tin, query lại từ DB
+        if (!user || !user._id || !user.displayName) {
+          console.log('⚠️ [Reaction] User not populated properly, fetching from DB:', r.user);
+          const userId = typeof r.user === 'string' ? r.user : r.user?._id;
+          user = await User.findById(userId).select('displayName profilePicture email');
+          console.log('✅ [Reaction] User fetched from DB:', user);
+        }
+        
+        return {
+          user: {
+            _id: user._id,
+            displayName: user.displayName || user.email?.split('@')[0] || 'Unknown User',
+            profilePicture: user.profilePicture || null,
+            email: user.email
+          },
+          emoji: r.emoji,
+          createdAt: r.createdAt
+        };
+      }));
+      
+      console.log('🔍 [Reaction] Emitting to socket:', JSON.stringify(populatedReactions, null, 2));
+      
+      conversation.participants.forEach(participantId => {
+        io.to(`user_${participantId}`).emit('messageReactionUpdated', {
+          messageId: message._id,
+          reactions: populatedReactions,
+          action,
+          userId
+        });
+      });
+    }
+
+    res.status(200).json({ 
+      message: 'Reaction updated successfully',
+      reactions: message.reactions 
+    });
+  } catch (error) {
+    console.error('Add reaction error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET - Download file
+router.get('/download/:filename', verifyToken, async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const path = require('path');
+    const fs = require('fs');
+    
+    // Tìm message có file này để lấy originalFileName
+    const message = await Message.findOne({ file: filename });
+    
+    if (!message) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    const filePath = path.join(__dirname, '..', 'uploads', filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found on server' });
+    }
+    
+    // Set headers để tải file với tên gốc
+    const originalFileName = message.originalFileName || filename;
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(originalFileName)}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    
+    // Stream file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+  } catch (error) {
+    console.error('Error downloading file:', error);
+    res.status(500).json({ error: 'Error downloading file' });
+  }
+});
+
+// PUT - Edit message (only before read by others)
+router.put('/messages/:messageId', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const messageId = sanitize(req.params.messageId);
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+
+    const message = await Message.findById(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Check if user is the sender
+    if (message.sender.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only edit your own messages' });
+    }
+
+    // Check if message has been read by others
+    const hasBeenReadByOthers = message.readBy.some(read => read.user.toString() !== userId);
+    if (hasBeenReadByOthers) {
+      return res.status(403).json({ error: 'Cannot edit message that has been read by others' });
+    }
+
+    // Update message
+    message.content = sanitize(content.trim());
+    message.isEdited = true;
+    message.editedAt = new Date();
+    await message.save();
+
+    await message.populate('sender', 'displayName profilePicture email');
+
+    // Emit socket event
+    const io = req.app.get('io');
+    if (io) {
+      const conversation = await Conversation.findById(message.conversationId);
+      if (conversation) {
+        io.to(`conversation_${message.conversationId}`).emit('messageEdited', {
+          messageId: message._id,
+          content: message.content,
+          isEdited: true,
+          editedAt: message.editedAt
+        });
+      }
+    }
+
+    res.json(message);
+  } catch (error) {
+    console.error('Edit message error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE - Delete message
+router.delete('/messages/:messageId', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const messageId = sanitize(req.params.messageId);
+
+    const message = await Message.findById(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Check if user is the sender
+    if (message.sender.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own messages' });
+    }
+
+    // Soft delete - just mark as deleted
+    message.isDeleted = true;
+    message.deletedBy = [userId];
+    message.content = 'Tin nhắn đã bị xóa';
+    await message.save();
+
+    // Emit socket event
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`conversation_${message.conversationId}`).emit('messageDeleted', {
+        messageId: message._id,
+        conversationId: message.conversationId
+      });
+    }
+
+    res.json({ message: 'Message deleted successfully' });
+  } catch (error) {
+    console.error('Delete message error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

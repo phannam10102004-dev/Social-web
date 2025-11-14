@@ -1,5 +1,4 @@
-import { io } from "socket.io-client";
-import { SOCKET_BASE_URL } from "@/config/env";
+import { io } from 'socket.io-client';
 
 class SocketService {
   constructor() {
@@ -8,33 +7,33 @@ class SocketService {
   }
 
   connect() {
-    const token = localStorage.getItem("token");
-
+    const token = localStorage.getItem('token');
+    
     if (!token) {
       return;
     }
-
+    
     if (this.isConnected) {
       return;
     }
 
-    this.socket = io(SOCKET_BASE_URL, {
+    this.socket = io('http://localhost:3000', {
       auth: {
-        token: token,
+        token: token
       },
-      transports: ["websocket"],
-      autoConnect: true,
+      transports: ['websocket'],
+      autoConnect: true
     });
 
-    this.socket.on("connect", () => {
+    this.socket.on('connect', () => {
       this.isConnected = true;
     });
 
-    this.socket.on("disconnect", () => {
+    this.socket.on('disconnect', () => {
       this.isConnected = false;
     });
 
-    this.socket.on("connect_error", (error) => {
+    this.socket.on('connect_error', (error) => {
       this.isConnected = false;
     });
 
@@ -57,101 +56,104 @@ class SocketService {
   // Message events
   joinConversation(conversationId) {
     if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("join_conversation", conversationId);
+      this.socket.emit('join_conversation', conversationId);
     }
   }
 
   leaveConversation(conversationId) {
-    console.log("🚪 Leaving conversation:", conversationId);
+    console.log('🚪 Leaving conversation:', conversationId);
     if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("leave_conversation", conversationId);
+      this.socket.emit('leave_conversation', conversationId);
     }
   }
 
   onNewMessage(callback) {
     if (this.socket) {
-      console.log("🎧 [SocketService] Setting up newMessage listener");
+      console.log('🎧 [SocketService] Setting up newMessage listener');
       // Remove any existing listener first to prevent duplicates
-      this.socket.off("newMessage");
-      this.socket.on("newMessage", (data) => {
-        console.log("📨 [SocketService] newMessage event received:", data);
+      this.socket.off('newMessage');
+      this.socket.on('newMessage', (data) => {
+        console.log('📨 [SocketService] newMessage event received:', data);
         callback(data);
       });
     } else {
-      console.error(
-        "❌ [SocketService] Cannot set up newMessage listener - no socket"
-      );
+      console.error('❌ [SocketService] Cannot set up newMessage listener - no socket');
     }
   }
 
   // Listen for new message notifications (for unread count updates)
   onNewMessageNotification(callback) {
     if (this.socket) {
-      console.log(
-        "🎧 [SocketService] Setting up newMessageNotification listener"
-      );
+      console.log('🎧 [SocketService] Setting up newMessageNotification listener');
       // Remove any existing listener first to prevent duplicates
-      this.socket.off("newMessageNotification");
-      this.socket.on("newMessageNotification", (data) => {
-        console.log(
-          "🔔 [SocketService] newMessageNotification event received:",
-          data
-        );
+      this.socket.off('newMessageNotification');
+      this.socket.on('newMessageNotification', (data) => {
+        console.log('🔔 [SocketService] newMessageNotification event received:', data);
         callback(data);
       });
     } else {
-      console.error(
-        "❌ [SocketService] Cannot set up newMessageNotification listener - no socket"
-      );
+      console.error('❌ [SocketService] Cannot set up newMessageNotification listener - no socket');
     }
   }
 
   onConversationUpdated(callback) {
     if (this.socket) {
-      this.socket.on("conversationUpdate", callback);
+      this.socket.on('conversationUpdate', callback);
     }
   }
 
   // Typing indicators
   startTyping(conversationId) {
     if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("typing_start", { conversationId });
+      this.socket.emit('typing_start', { conversationId });
     }
   }
 
   stopTyping(conversationId) {
     if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("typing_stop", { conversationId });
+      this.socket.emit('typing_stop', { conversationId });
     }
   }
 
   onUserTyping(callback) {
     if (this.socket) {
-      this.socket.on("user_typing", callback);
+      this.socket.on('user_typing', callback);
     }
   }
 
   onUserStopTyping(callback) {
     if (this.socket) {
-      this.socket.on("user_stop_typing", callback);
+      this.socket.on('user_stop_typing', callback);
     }
   }
 
   // Notification events
   onNewNotification(callback) {
     if (this.socket) {
-      this.socket.on("new_notification", callback);
+      this.socket.on('new_notification', callback);
+    }
+  }
+
+  // Reaction events
+  onMessageReactionUpdated(callback) {
+    if (this.socket) {
+      console.log('👍 [SocketService] Setting up messageReactionUpdated listener');
+      this.socket.off('messageReactionUpdated');
+      this.socket.on('messageReactionUpdated', (data) => {
+        console.log('👍 [SocketService] messageReactionUpdated event received:', data);
+        callback(data);
+      });
     }
   }
 
   // GROUP CHAT EVENTS
-
+  
   // Listen for group created
   onGroupCreated(callback) {
     if (this.socket) {
-      console.log("👥 [SocketService] Setting up groupCreated listener");
-      this.socket.on("groupCreated", (data) => {
-        console.log("👥 [SocketService] Group created received:", data);
+      console.log('👥 [SocketService] Setting up groupCreated listener');
+      this.socket.on('groupCreated', (data) => {
+        console.log('👥 [SocketService] Group created received:', data);
         callback(data);
       });
     }
@@ -160,9 +162,9 @@ class SocketService {
   // Listen for member added
   onMemberAdded(callback) {
     if (this.socket) {
-      console.log("➕ [SocketService] Setting up memberAdded listener");
-      this.socket.on("memberAdded", (data) => {
-        console.log("➕ [SocketService] Member added received:", data);
+      console.log('➕ [SocketService] Setting up memberAdded listener');
+      this.socket.on('memberAdded', (data) => {
+        console.log('➕ [SocketService] Member added received:', data);
         callback(data);
       });
     }
@@ -171,9 +173,9 @@ class SocketService {
   // Listen for member removed
   onMemberRemoved(callback) {
     if (this.socket) {
-      console.log("➖ [SocketService] Setting up memberRemoved listener");
-      this.socket.on("memberRemoved", (data) => {
-        console.log("➖ [SocketService] Member removed received:", data);
+      console.log('➖ [SocketService] Setting up memberRemoved listener');
+      this.socket.on('memberRemoved', (data) => {
+        console.log('➖ [SocketService] Member removed received:', data);
         callback(data);
       });
     }
@@ -182,9 +184,9 @@ class SocketService {
   // Listen for group updated
   onGroupUpdated(callback) {
     if (this.socket) {
-      console.log("🔄 [SocketService] Setting up groupUpdated listener");
-      this.socket.on("groupUpdated", (data) => {
-        console.log("🔄 [SocketService] Group updated received:", data);
+      console.log('🔄 [SocketService] Setting up groupUpdated listener');
+      this.socket.on('groupUpdated', (data) => {
+        console.log('🔄 [SocketService] Group updated received:', data);
         callback(data);
       });
     }
@@ -193,7 +195,7 @@ class SocketService {
   // Activity tracking
   updateActivity() {
     if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("user_activity");
+      this.socket.emit('user_activity');
     }
   }
 
@@ -204,100 +206,11 @@ class SocketService {
     }
   }
 
-  // Video call signaling helpers
-  requestCall(conversationId, callType = "video") {
-    if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("call:request", { conversationId, callType });
-    }
-  }
-
-  cancelCall(conversationId) {
-    if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("call:cancel", { conversationId });
-    }
-  }
-
-  acceptCall(conversationId) {
-    if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("call:accept", { conversationId });
-    }
-  }
-
-  rejectCall(conversationId) {
-    if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("call:reject", { conversationId });
-    }
-  }
-
-  endCall(conversationId) {
-    if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("call:end", { conversationId });
-    }
-  }
-
-  sendOffer(conversationId, offer) {
-    if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("call:offer", { conversationId, offer });
-    }
-  }
-
-  sendAnswer(conversationId, answer) {
-    if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("call:answer", { conversationId, answer });
-    }
-  }
-
-  sendIceCandidate(conversationId, candidate) {
-    if (this.socket && this.getConnectionStatus()) {
-      this.socket.emit("call:iceCandidate", { conversationId, candidate });
-    }
-  }
-
-  onIncomingCall(callback) {
+  // Add generic on() method for any socket event
+  on(event, callback) {
     if (this.socket) {
-      this.socket.on("call:incoming", callback);
-    }
-  }
-
-  onCallCancelled(callback) {
-    if (this.socket) {
-      this.socket.on("call:cancelled", callback);
-    }
-  }
-
-  onCallRejected(callback) {
-    if (this.socket) {
-      this.socket.on("call:rejected", callback);
-    }
-  }
-
-  onCallAccepted(callback) {
-    if (this.socket) {
-      this.socket.on("call:accepted", callback);
-    }
-  }
-
-  onCallEnded(callback) {
-    if (this.socket) {
-      this.socket.on("call:ended", callback);
-    }
-  }
-
-  onCallOffer(callback) {
-    if (this.socket) {
-      this.socket.on("call:offer", callback);
-    }
-  }
-
-  onCallAnswer(callback) {
-    if (this.socket) {
-      this.socket.on("call:answer", callback);
-    }
-  }
-
-  onIceCandidate(callback) {
-    if (this.socket) {
-      this.socket.on("call:iceCandidate", callback);
+      console.log(`🎧 [SocketService] Setting up ${event} listener`);
+      this.socket.on(event, callback);
     }
   }
 

@@ -1,9 +1,24 @@
 <template>
   <div class="timeline">
     <!-- Các khối Skeletor để hiển thị hiệu ứng tải -->
-    <Skeletor circle size="50" class="skeletor" v-if="isLoading" />
-    <Skeletor v-if="isLoading" class="skeletor" width="100%" height="20" />
-    <Skeletor v-if="isLoading" class="skeletor" width="100%" height="300" />
+    <template v-if="isLoading">
+      <div class="post-skeleton" v-for="i in 3" :key="'skeleton-' + i">
+        <div class="skeleton-header">
+          <Skeletor circle width="50" height="50" />
+          <div class="skeleton-header-text">
+            <Skeletor width="150" height="16" />
+            <Skeletor width="100" height="12" style="margin-top: 6px;" />
+          </div>
+        </div>
+        <Skeletor width="100%" height="80" style="margin-top: 12px; border-radius: 8px;" />
+        <Skeletor width="100%" height="300" style="margin-top: 12px; border-radius: 12px;" />
+        <div class="skeleton-actions">
+          <Skeletor width="80" height="36" style="border-radius: 8px;" />
+          <Skeletor width="80" height="36" style="border-radius: 8px;" />
+          <Skeletor width="80" height="36" style="border-radius: 8px;" />
+        </div>
+      </div>
+    </template>
 
     <!-- Sau khi load xong sẽ hiển thị danh sách bài post -->
     <div
@@ -15,26 +30,31 @@
       <div class="post">
         <!-- ảnh đại diện user -->
         <div class="user-post-img">
-          <ProfileImage :id="post.userId" />
+          <ProfileImage :id="post.userId"  />
         </div>
 
         <!-- Nội dung bài post -->
         <div class="post__user-post">
-          <div
-            class="post-header"
-            :class="{ 'has-actions': canShowActionsFor(post) }"
-          >
+          <div class="post-header" :class="{ 'has-actions': canShowActionsFor(post) }">
             <div class="post-header-left">
               <PostDisplayName :id="post.userId" />
               <span class="post-time" v-if="post.createdAt">
                 {{ formatFullDateTime(post.createdAt) }}
               </span>
             </div>
-            <PostActions
-              :post="post"
+            <PostActions 
+              :post="post" 
               @edit-post="openEditModal"
               @delete-post="handleDeletePost"
             />
+          </div>
+          <div class="privacy-indicator" v-if="post.privacy === 'private'">
+            <span class="material-icons">lock</span>
+            <span class="privacy-text">Chỉ mình tôi</span>
+          </div>
+          <div class="privacy-indicator privacy-public" v-else-if="post.privacy === 'public'">
+            <span class="material-icons">public</span>
+            <span class="privacy-text">Công khai</span>
           </div>
           <div class="user-post-desc">
             <p
@@ -61,7 +81,7 @@
           <div class="user-post-image" v-if="post.file">
             <img
               class="image-post__img"
-              :src="$buildAssetUrl('uploads/' + post.file)"
+              :src="`http://localhost:3000/uploads/${post.file}`"
             />
           </div>
         </div>
@@ -74,9 +94,7 @@
         :reactions-count="post.reactionsCount || {}"
         :total-likes="post.likesCount || 0"
         :total-comments="commentsCountFor(post)"
-        @show-reactors="
-          (reactionType) => showReactorsModal(post._id, reactionType)
-        "
+        @show-reactors="(reactionType) => showReactorsModal(post._id, reactionType)"
         @show-all-reactors="showAllReactorsModal(post._id)"
         @show-comments="$emit('show-post-detail', post._id)"
       />
@@ -90,16 +108,7 @@
         :initial-reactions-count="post.reactionsCount || {}"
         :show-comment="true"
         @comment="$emit('show-post-detail', post._id)"
-        @updated="
-          ({ isLiked, likesCount, userReaction, reactionsCount }) =>
-            $store.commit('UPDATE_POST_LIKE', {
-              postId: post._id,
-              isLiked,
-              likesCount,
-              userReaction,
-              reactionsCount,
-            })
-        "
+        @updated="({ isLiked, likesCount, userReaction, reactionsCount }) => $store.commit('UPDATE_POST_LIKE', { postId: post._id, isLiked, likesCount, userReaction, reactionsCount })"
       />
 
       <!-- Preview Comments Section (Show max 3 recent comments) -->
@@ -111,18 +120,24 @@
         >
           <ProfileImage :id="comment.userId" class="comment-avatar" />
           <div class="comment-content">
-            <PostDisplayName :id="comment.userId" class="comment-author" />
-            <p class="comment-text" v-if="comment.comment">
-              {{ comment.comment }}
-            </p>
+            <div class="comment__header">
+              <div class="comment__user-info">
+                <PostDisplayName :id="comment.userId" class="comment-author" />
+                <span class="comment__time">{{ formatCommentTime(comment.createdAt) }}</span>
+              </div>
+              <div class="comment__actions" v-if="canEditComment(comment)">
+                <i class="material-icons comment__menu-icon" @click.stop="openCommentMenu(post._id, comment, $event)">more_horiz</i>
+              </div>
+            </div>
+            <p class="comment-text" v-if="comment.comment">{{ comment.comment }}</p>
             <img
               v-if="comment.file"
               class="comment-image"
-              :src="$buildAssetUrl('uploads/' + comment.file)"
+              :src="`http://localhost:3000/uploads/${comment.file}`"
             />
           </div>
         </div>
-
+        
         <!-- Show "View more" button if there are more than 3 comments -->
         <button
           v-if="commentsCountFor(post) > 3"
@@ -141,11 +156,7 @@
     </div>
 
     <!-- Scroll trigger element -->
-    <div
-      ref="scrollTrigger"
-      class="scroll-trigger"
-      v-if="hasMore && !isLoading"
-    ></div>
+    <div ref="scrollTrigger" class="scroll-trigger" v-if="hasMore && !isLoading"></div>
 
     <!-- End message -->
     <div class="end-message" v-if="!hasMore && posts.length > 0 && !isLoading">
@@ -170,6 +181,46 @@
         @close="closeReactorsModal"
       />
     </Teleport>
+
+    <!-- Comment Context Menu -->
+    <div v-if="showCommentMenu" class="comment-context-menu" :style="{ left: commentMenuPosition.x + 'px', top: commentMenuPosition.y + 'px' }">
+      <div class="menu-item" @click="editComment">
+        <i class="material-icons">edit</i>
+        <span>Sửa</span>
+      </div>
+      <div class="menu-item delete" @click="confirmDeleteComment">
+        <i class="material-icons">delete</i>
+        <span>Xóa</span>
+      </div>
+    </div>
+
+    <!-- Edit Comment Modal -->
+    <div v-if="showEditCommentModal" class="edit-modal-overlay" @click.self="cancelEditComment">
+      <div class="edit-modal">
+        <div class="edit-modal-header">
+          <h3>Sửa bình luận</h3>
+        </div>
+        <div class="edit-modal-body">
+          <textarea v-model="editingCommentContent" ref="editCommentTextarea"></textarea>
+        </div>
+        <div class="edit-modal-footer">
+          <button @click="cancelEditComment" class="btn-cancel">Hủy</button>
+          <button @click="saveEditComment" class="btn-save">Lưu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Comment Modal -->
+    <div v-if="showDeleteCommentModal" class="edit-modal-overlay" @click.self="showDeleteCommentModal = false">
+      <div class="edit-modal delete-confirm-modal" @click.stop>
+        <h3>Xóa bình luận</h3>
+        <p>Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.</p>
+        <div class="modal-actions">
+          <button @click="showDeleteCommentModal = false" class="btn-cancel">Hủy</button>
+          <button @click="deleteComment" class="btn-delete">Xóa bình luận</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -182,23 +233,23 @@ import PostActions from "@/components/PostActions.vue";
 import PostEditModal from "@/components/PostEditModal.vue";
 import ReactorsModal from "@/components/ReactorsModal.vue";
 import { Skeletor } from "vue-skeletor";
-import HoverUserList from "@/components/HoverUserList";
-import { getTimeAgo, formatDateTime } from "@/utils/timeUtils";
+import HoverUserList from '@/components/HoverUserList';
+import { getTimeAgo, formatDateTime } from '@/utils/timeUtils';
 import SyncLoader from "vue-spinner/src/SyncLoader.vue";
 
 export default {
   name: "Timeline",
-  components: {
-    ProfileImage,
-    Skeletor,
-    PostDisplayName,
-    LikeActionBar,
+  components: { 
+    ProfileImage, 
+    Skeletor, 
+    PostDisplayName, 
+    LikeActionBar, 
     ReactionsSummary,
-    HoverUserList,
-    PostActions,
+    HoverUserList, 
+    PostActions, 
     PostEditModal,
     ReactorsModal,
-    SyncLoader,
+    SyncLoader 
   },
   data() {
     return {
@@ -217,13 +268,25 @@ export default {
       showReactorsModalVisible: false,
       selectedPostIdForReactors: null,
       selectedPostReactionsCount: {},
-      selectedReactionTab: "all",
+      selectedReactionTab: 'all',
+      // Comment edit/delete
+      showCommentMenu: false,
+      commentMenuPosition: { x: 0, y: 0 },
+      contextComment: null,
+      contextPostId: null,
+      showEditCommentModal: false,
+      showDeleteCommentModal: false,
+      editingCommentContent: '',
+      editingCommentId: null,
     };
   },
   async mounted() {
     this.isLoading = true;
     await this.$store.dispatch("loadPosts", { page: 1, append: false });
     this.isLoading = false;
+
+    // Add document click listener for comment menu
+    document.addEventListener('click', this.handleDocumentClick);
 
     // Khởi tạo trạng thái mở rộng cho tất cả các bài post
     if (this.posts && this.posts.length) {
@@ -244,12 +307,12 @@ export default {
     try {
       await this.loadCommentCountsForPosts();
     } catch (err) {
-      console.error("Failed to load comment counts:", err);
+      console.error('Failed to load comment counts:', err);
     }
 
     // Setup infinite scroll
     this.setupInfiniteScroll();
-
+    
     // Setup intersection observer
     this.setupIntersectionObserver();
   },
@@ -260,6 +323,8 @@ export default {
     if (this.observer) {
       this.observer.disconnect();
     }
+    // Cleanup comment menu listener
+    document.removeEventListener('click', this.handleDocumentClick);
   },
   computed: {
     posts() {
@@ -275,24 +340,24 @@ export default {
   methods: {
     setupInfiniteScroll() {
       this.scrollHandler = this.throttle(this.handleScroll.bind(this), 200);
-      window.addEventListener("scroll", this.scrollHandler, { passive: true });
+      window.addEventListener('scroll', this.scrollHandler, { passive: true });
     },
     removeInfiniteScroll() {
       if (this.scrollHandler) {
-        window.removeEventListener("scroll", this.scrollHandler);
+        window.removeEventListener('scroll', this.scrollHandler);
       }
     },
     throttle(func, delay) {
       let timeoutId;
       let lastRan;
-      return function (...args) {
+      return function(...args) {
         if (!lastRan) {
           func.apply(this, args);
           lastRan = Date.now();
         } else {
           clearTimeout(timeoutId);
           timeoutId = setTimeout(() => {
-            if (Date.now() - lastRan >= delay) {
+            if ((Date.now() - lastRan) >= delay) {
               func.apply(this, args);
               lastRan = Date.now();
             }
@@ -307,24 +372,23 @@ export default {
       }
 
       // Tính toán khoảng cách đến cuối trang
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
 
       // Debug log
-      console.log("Scroll Debug:", {
+      console.log('Scroll Debug:', {
         scrollTop,
         windowHeight,
         documentHeight,
         remaining: documentHeight - (scrollTop + windowHeight),
         hasMore: this.hasMore,
-        loadingMore: this.loadingMore,
+        loadingMore: this.loadingMore
       });
 
       // Nếu cuộn đến gần cuối trang (còn 500px nữa là hết)
       if (scrollTop + windowHeight >= documentHeight - 500) {
-        console.log("Triggering loadMore...");
+        console.log('Triggering loadMore...');
         this.loadMore();
       }
     },
@@ -332,48 +396,45 @@ export default {
       // Wait for next tick to ensure the ref is available
       this.$nextTick(() => {
         if (!this.$refs.scrollTrigger) {
-          console.log("Scroll trigger ref not available yet");
+          console.log('Scroll trigger ref not available yet');
           return;
         }
 
         const options = {
           root: null, // viewport
-          rootMargin: "500px", // Trigger 500px before reaching the element
-          threshold: 0.1, // Trigger when 10% of the element is visible
+          rootMargin: '500px', // Trigger 500px before reaching the element
+          threshold: 0.1 // Trigger when 10% of the element is visible
         };
 
         this.observer = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            console.log("Intersection Observer:", {
+          entries.forEach(entry => {
+            console.log('Intersection Observer:', {
               isIntersecting: entry.isIntersecting,
               hasMore: this.hasMore,
-              loadingMore: this.loadingMore,
+              loadingMore: this.loadingMore
             });
-
+            
             if (entry.isIntersecting && this.hasMore && !this.loadingMore) {
-              console.log("Observer triggering loadMore...");
+              console.log('Observer triggering loadMore...');
               this.loadMore();
             }
           });
         }, options);
 
         this.observer.observe(this.$refs.scrollTrigger);
-        console.log("Intersection Observer initialized");
+        console.log('Intersection Observer initialized');
       });
     },
     async loadMore() {
       this.loadingMore = true;
-      await this.$store.dispatch("loadPosts", {
-        page: this.currentPage + 1,
-        append: true,
-      });
+      await this.$store.dispatch("loadPosts", { page: this.currentPage + 1, append: true });
       this.loadingMore = false;
-
+      
       // Load comment counts for new posts
       try {
         await this.loadCommentCountsForPosts();
       } catch (err) {
-        console.error("Failed to load comment counts:", err);
+        console.error('Failed to load comment counts:', err);
       }
     },
     getTimeAgo(timestamp) {
@@ -384,34 +445,18 @@ export default {
     },
     async loadCommentCountsForPosts() {
       try {
-        const { getPostComments } = await import("@/api/posts");
+        const { getPostComments } = await import('@/api/posts');
         const tasks = (this.posts || []).map(async (p) => {
           try {
             const res = await getPostComments(p._id);
-            const arr = Array.isArray(res?.data)
-              ? res.data
-              : res?.data?.comments || [];
-
+            const arr = Array.isArray(res?.data) ? res.data : (res?.data?.comments || []);
+            
             // Store both count and actual comments
-            this.$set
-              ? this.$set(this.commentCounts, p._id, arr.length)
-              : (this.commentCounts = {
-                  ...this.commentCounts,
-                  [p._id]: arr.length,
-                });
-            this.$set
-              ? this.$set(this.postComments, p._id, arr)
-              : (this.postComments = { ...this.postComments, [p._id]: arr });
+            this.$set ? this.$set(this.commentCounts, p._id, arr.length) : (this.commentCounts = { ...this.commentCounts, [p._id]: arr.length });
+            this.$set ? this.$set(this.postComments, p._id, arr) : (this.postComments = { ...this.postComments, [p._id]: arr });
           } catch (_) {
-            this.$set
-              ? this.$set(this.commentCounts, p._id, p.commentsCount || 0)
-              : (this.commentCounts = {
-                  ...this.commentCounts,
-                  [p._id]: p.commentsCount || 0,
-                });
-            this.$set
-              ? this.$set(this.postComments, p._id, [])
-              : (this.postComments = { ...this.postComments, [p._id]: [] });
+            this.$set ? this.$set(this.commentCounts, p._id, p.commentsCount || 0) : (this.commentCounts = { ...this.commentCounts, [p._id]: p.commentsCount || 0 });
+            this.$set ? this.$set(this.postComments, p._id, []) : (this.postComments = { ...this.postComments, [p._id]: [] });
           }
         });
         await Promise.all(tasks);
@@ -425,15 +470,14 @@ export default {
     commentsCountFor(post) {
       if (!post) return 0;
       const cached = this.commentCounts[post._id];
-      if (typeof cached === "number") return cached;
+      if (typeof cached === 'number') return cached;
       return post.commentsCount || 0;
     },
     formatCompact(num) {
       const n = Number(num) || 0;
-      if (n >= 1000000000)
-        return (n / 1000000000).toFixed(n % 1000000000 ? 1 : 0) + "B";
-      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + "M";
-      if (n >= 1000) return (n / 1000).toFixed(n % 1000 ? 1 : 0) + "K";
+      if (n >= 1000000000) return (n / 1000000000).toFixed(n % 1000000000 ? 1 : 0) + 'B';
+      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'K';
       return String(n);
     },
     isPostTruncated(description) {
@@ -531,21 +575,21 @@ export default {
     },
     showReactorsModal(postId, reactionType) {
       // Tìm post để lấy reactionsCount
-      const post = this.posts.find((p) => p._id === postId);
+      const post = this.posts.find(p => p._id === postId);
       if (post) {
         this.selectedPostIdForReactors = postId;
         this.selectedPostReactionsCount = post.reactionsCount || {};
-        this.selectedReactionTab = reactionType || "all";
+        this.selectedReactionTab = reactionType || 'all';
         this.showReactorsModalVisible = true;
       }
     },
     showAllReactorsModal(postId) {
       // Hiển thị modal với tab "Tất cả"
-      const post = this.posts.find((p) => p._id === postId);
+      const post = this.posts.find(p => p._id === postId);
       if (post) {
         this.selectedPostIdForReactors = postId;
         this.selectedPostReactionsCount = post.reactionsCount || {};
-        this.selectedReactionTab = "all";
+        this.selectedReactionTab = 'all';
         this.showReactorsModalVisible = true;
       }
     },
@@ -553,57 +597,180 @@ export default {
       this.showReactorsModalVisible = false;
       this.selectedPostIdForReactors = null;
       this.selectedPostReactionsCount = {};
-      this.selectedReactionTab = "all";
+      this.selectedReactionTab = 'all';
     },
     async handleSavePost(updatedPost) {
       try {
         const currentUserId = this.$store.state.user?._id;
-
+        
         const postData = {
           description: updatedPost.description,
           file: updatedPost.file,
-          userId: currentUserId,
+          privacy: updatedPost.privacy,
+          userId: currentUserId
         };
-
-        await this.$store.dispatch("editPost", {
+        
+        await this.$store.dispatch('editPost', {
           postId: updatedPost._id,
-          updatedPost: postData,
+          updatedPost: postData
         });
-
+        
         this.closeEditModal();
-
+        
         // Show success message (you might want to add a notification system)
-        console.log("Bài viết đã được cập nhật thành công");
+        console.log('Bài viết đã được cập nhật thành công');
       } catch (error) {
-        console.error("Error updating post:", error);
+        console.error('Error updating post:', error);
         // Handle error (show error message to user)
       }
     },
     async handleDeletePost(post) {
       try {
         const currentUserId = this.$store.state.user?._id;
-
-        await this.$store.dispatch("deletePost", {
+        
+        await this.$store.dispatch('deletePost', {
           postId: post._id,
-          userId: currentUserId,
+          userId: currentUserId
         });
-
+        
         // Show success message
-        console.log("Bài viết đã được xóa thành công");
+        console.log('Bài viết đã được xóa thành công');
       } catch (error) {
-        console.error("Error deleting post:", error);
+        console.error('Error deleting post:', error);
         // Handle error (show error message to user)
       }
     },
     updatePostCommentsCount(postId, newCount) {
       // Find and update the post's commentsCount
-      const post = this.posts.find((p) => p._id === postId);
+      const post = this.posts.find(p => p._id === postId);
       if (post) {
         post.commentsCount = newCount;
         // Force reactivity update
         this.$forceUpdate();
       }
     },
+    // Comment management methods
+    formatCommentTime(timestamp) {
+      if (!timestamp) return '';
+      const now = new Date();
+      const commentDate = new Date(timestamp);
+      const diffMs = now - commentDate;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Vừa xong';
+      if (diffMins < 60) return `${diffMins} phút`;
+      if (diffHours < 24) return `${diffHours} giờ`;
+      if (diffDays === 1) return 'Hôm qua';
+      if (diffDays < 7) return `${diffDays} ngày`;
+      
+      return formatDateTime(timestamp, false);
+    },
+    canEditComment(comment) {
+      const currentUser = this.$store.state.user;
+      return currentUser && comment && currentUser._id === comment.userId;
+    },
+    handleDocumentClick(event) {
+      // Close comment menu when clicking outside
+      if (this.showCommentMenu && !event.target.closest('.comment__menu-icon') && !event.target.closest('.comment-context-menu')) {
+        this.showCommentMenu = false;
+      }
+    },
+    openCommentMenu(postId, comment, event) {
+      event.stopPropagation();
+      const rect = event.target.getBoundingClientRect();
+      this.commentMenuPosition = {
+        x: rect.left,
+        y: rect.bottom + 5
+      };
+      this.contextComment = comment;
+      this.contextPostId = postId;
+      this.showCommentMenu = true;
+    },
+    editComment() {
+      if (!this.contextComment) return;
+      this.editingCommentContent = this.contextComment.comment || '';
+      this.editingCommentId = this.contextComment._id;
+      this.showCommentMenu = false;
+      this.showEditCommentModal = true;
+      
+      this.$nextTick(() => {
+        if (this.$refs.editCommentTextarea) {
+          this.$refs.editCommentTextarea.focus();
+        }
+      });
+    },
+    cancelEditComment() {
+      this.showEditCommentModal = false;
+      this.editingCommentContent = '';
+      this.editingCommentId = null;
+      this.contextComment = null;
+      this.contextPostId = null;
+    },
+    async saveEditComment() {
+      if (!this.editingCommentId || !this.editingCommentContent.trim() || !this.contextPostId) {
+        return;
+      }
+      
+      try {
+        const { editComment } = await import('@/api/posts');
+        const response = await editComment(
+          this.contextPostId,
+          this.editingCommentId,
+          this.editingCommentContent,
+          this.$store.state.user._id
+        );
+        
+        if (response.status === 200) {
+          // Update local comment in postComments cache
+          const comments = this.postComments[this.contextPostId] || [];
+          const commentIndex = comments.findIndex(c => c._id === this.editingCommentId);
+          if (commentIndex !== -1) {
+            comments[commentIndex].comment = this.editingCommentContent;
+            this.$set ? this.$set(this.postComments, this.contextPostId, [...comments]) : (this.postComments = { ...this.postComments, [this.contextPostId]: [...comments] });
+          }
+          
+          this.cancelEditComment();
+        }
+      } catch (error) {
+        console.error('Error updating comment:', error);
+        alert('Không thể cập nhật bình luận. Vui lòng thử lại.');
+      }
+    },
+    confirmDeleteComment() {
+      this.showCommentMenu = false;
+      this.showDeleteCommentModal = true;
+    },
+    async deleteComment() {
+      if (!this.contextComment || !this.contextPostId) return;
+      
+      try {
+        const { deleteComment } = await import('@/api/posts');
+        const response = await deleteComment(
+          this.contextPostId,
+          this.contextComment._id,
+          this.$store.state.user._id
+        );
+        
+        if (response.status === 200) {
+          // Remove from local comments cache
+          const comments = this.postComments[this.contextPostId] || [];
+          const updatedComments = comments.filter(c => c._id !== this.contextComment._id);
+          this.$set ? this.$set(this.postComments, this.contextPostId, updatedComments) : (this.postComments = { ...this.postComments, [this.contextPostId]: updatedComments });
+          
+          // Update comment count
+          this.$set ? this.$set(this.commentCounts, this.contextPostId, updatedComments.length) : (this.commentCounts = { ...this.commentCounts, [this.contextPostId]: updatedComments.length });
+          
+          this.showDeleteCommentModal = false;
+          this.contextComment = null;
+          this.contextPostId = null;
+        }
+      } catch (error) {
+        console.error('Error deleting comment:', error);
+        alert('Không thể xóa bình luận. Vui lòng thử lại.');
+      }
+    }
   },
 };
 </script>
@@ -627,13 +794,11 @@ export default {
   box-sizing: border-box;
   max-width: 100%;
   overflow-x: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
-    0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
 .timeline__post:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   transform: translateY(-4px);
   border-color: rgba(102, 126, 234, 0.2);
 }
@@ -722,13 +887,42 @@ export default {
 }
 
 .post-time::before {
-  content: "•";
+  content: '•';
   font-size: 0.625rem;
   color: var(--gray-400);
 }
 
 .post-time:hover {
   color: var(--primary);
+}
+
+.privacy-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(107, 114, 128, 0.08);
+  border-radius: 14px;
+  font-size: 0.8125rem;
+  color: var(--gray-600);
+  margin: 0.25rem 0 0.5rem 0;
+  border: 1px solid rgba(107, 114, 128, 0.12);
+  width: fit-content;
+  max-width: max-content;
+}
+
+.privacy-indicator.privacy-public {
+  background: rgba(102, 126, 234, 0.08);
+  border-color: rgba(102, 126, 234, 0.12);
+  color: var(--primary);
+}
+
+.privacy-indicator .material-icons {
+  font-size: 0.9375rem;
+}
+
+.privacy-text {
+  font-weight: 500;
 }
 
 .post__user-post a {
@@ -808,7 +1002,7 @@ export default {
 }
 
 .read-more-link::after {
-  content: "";
+  content: '';
   position: absolute;
   bottom: -2px;
   left: 0;
@@ -1046,16 +1240,12 @@ export default {
   flex-shrink: 0;
   border: 2px solid transparent;
   background: linear-gradient(white, white) padding-box,
-    linear-gradient(135deg, #667eea, #764ba2) border-box;
+              linear-gradient(135deg, #667eea, #764ba2) border-box;
   box-shadow: 0 2px 6px rgba(102, 126, 234, 0.15);
 }
 
 .comment-content {
-  background: linear-gradient(
-    135deg,
-    rgba(102, 126, 234, 0.04) 0%,
-    rgba(118, 75, 162, 0.04) 100%
-  );
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%);
   border: 1px solid rgba(102, 126, 234, 0.1);
   border-radius: 16px;
   padding: 0.75rem 1rem;
@@ -1090,11 +1280,7 @@ export default {
 }
 
 .view-more-comments-btn {
-  background: linear-gradient(
-    135deg,
-    rgba(102, 126, 234, 0.06) 0%,
-    rgba(118, 75, 162, 0.06) 100%
-  );
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.06) 100%);
   border: 2px solid rgba(102, 126, 234, 0.15);
   color: #667eea;
   font-weight: 600;
@@ -1392,6 +1578,35 @@ export default {
   font-weight: 500;
 }
 
+/* Post Skeleton */
+.post-skeleton {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.skeleton-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.skeleton-header-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.skeleton-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+}
+
 .end-message {
   text-align: center;
   padding: 0.5rem 0;
@@ -1403,11 +1618,7 @@ export default {
 .end-message span {
   display: inline-block;
   padding: 1rem 2rem;
-  background: linear-gradient(
-    135deg,
-    rgba(102, 126, 234, 0.05) 0%,
-    rgba(118, 75, 162, 0.05) 100%
-  );
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
   border-radius: var(--radius-xl);
   border: 1px solid rgba(102, 126, 234, 0.2);
 }
@@ -1415,5 +1626,349 @@ export default {
 .scroll-trigger {
   height: 1px;
   width: 100%;
+}
+
+/* Comment header with time and actions */
+.comment__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  width: 100%;
+}
+
+.comment__user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.comment__time {
+  color: #65676b;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.comment__actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.preview-comment:hover .comment__actions {
+  opacity: 1;
+}
+
+.comment__menu-icon {
+  font-size: 18px !important;
+  color: #65676b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.comment__menu-icon:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #1f2937;
+}
+
+/* Comment context menu */
+.comment-context-menu {
+  position: fixed;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  z-index: 1000;
+  min-width: 160px;
+  animation: slideDown 0.15s ease;
+}
+
+.comment-context-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.comment-context-menu .menu-item:hover {
+  background-color: rgba(102, 126, 234, 0.08);
+}
+
+.comment-context-menu .menu-item.delete {
+  color: #dc2626;
+}
+
+.comment-context-menu .menu-item.delete:hover {
+  background-color: rgba(220, 38, 38, 0.08);
+}
+
+.comment-context-menu .menu-item i {
+  font-size: 18px;
+}
+
+/* Edit comment modal - Facebook style */
+.edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 1rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.edit-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  position: relative;
+}
+
+.edit-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1c1e21;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+
+.edit-modal-body {
+  padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.edit-modal-body textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 1rem;
+  border: 2px solid #e4e6eb;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: all 0.2s ease;
+  background: #f8f9fa;
+  color: #1c1e21;
+}
+
+.edit-modal-body textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.edit-modal-body textarea::placeholder {
+  color: #8a8d91;
+}
+
+.edit-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  background: #f8f9fa;
+}
+
+.btn-cancel,
+.btn-save,
+.btn-delete {
+  padding: 0.75rem 1.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-cancel {
+  background: #e4e6eb;
+  color: #050505;
+}
+
+.btn-cancel:hover {
+  background: #d8dadf;
+  transform: translateY(-1px);
+}
+
+.btn-cancel:active {
+  transform: translateY(0);
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+}
+
+.btn-save:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-delete {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.btn-delete:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4);
+}
+
+.btn-delete:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+/* Delete confirmation modal - Facebook style */
+.delete-confirm-modal {
+  padding: 2rem 2.5rem;
+  text-align: center;
+  max-width: 420px;
+}
+
+.delete-confirm-modal h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #1c1e21;
+  letter-spacing: -0.02em;
+}
+
+.delete-confirm-modal p {
+  margin: 0 0 2rem 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #65676b;
+}
+
+.delete-confirm-modal .modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.delete-confirm-modal button {
+  min-width: 120px;
+}
+
+/* Responsive modal styles */
+@media (max-width: 640px) {
+  .edit-modal {
+    max-width: 95%;
+    margin: 0 1rem;
+  }
+
+  .edit-modal-header h3 {
+    font-size: 1.125rem;
+  }
+
+  .edit-modal-body {
+    padding: 1.25rem;
+  }
+
+  .edit-modal-body textarea {
+    min-height: 120px;
+    font-size: 0.875rem;
+  }
+
+  .edit-modal-footer {
+    padding: 0.875rem 1.25rem;
+  }
+
+  .btn-cancel,
+  .btn-save,
+  .btn-delete {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  .delete-confirm-modal {
+    padding: 1.5rem 1.75rem;
+    max-width: 95%;
+  }
+
+  .delete-confirm-modal h3 {
+    font-size: 1.125rem;
+  }
+
+  .delete-confirm-modal p {
+    font-size: 0.9375rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .delete-confirm-modal .modal-actions {
+    flex-direction: column;
+  }
+
+  .delete-confirm-modal button {
+    width: 100%;
+  }
 }
 </style>
