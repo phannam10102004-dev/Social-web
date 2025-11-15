@@ -1,114 +1,159 @@
 <template>
   <Teleport to="body">
-  <form
-    class="fb-create-post"
-    @submit.prevent="addImagePost"
-    enctype="multipart/form-data"
-    @click.self="closeModal"
-  >
-    <div class="fb-card">
-      <!-- Header -->
-      <div class="fb-card__header">
-        <div class="fb-card__title">Tạo bài viết</div>
-        <button
-          class="fb-card__close"
-          type="button"
-          aria-label="Đóng"
-          @click.stop="closeModal"
-        >
-          <span aria-hidden="true">&times;</span>
-        </button>
+    <form
+      class="fb-create-post"
+      @submit.prevent="addImagePost"
+      enctype="multipart/form-data"
+      @click.self="closeModal"
+    >
+      <div class="fb-card">
+        <!-- Header -->
+        <div class="fb-card__header">
+          <div class="fb-card__title">Tạo bài viết</div>
+          <button
+            class="fb-card__close"
+            type="button"
+            aria-label="Đóng"
+            @click.stop="closeModal"
+          >
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="fb-card__body">
+          <!-- User row -->
+          <div class="fb-user-row">
+            <ProfileImage
+              :id="currentUser._id || id"
+              class="fb-user-row__avatar"
+            />
+            <div class="fb-user-row__meta">
+              <div class="fb-user-row__name">
+                {{
+                  currentUser.displayName ||
+                  currentUser.name ||
+                  currentUser.email ||
+                  "Người dùng"
+                }}
+              </div>
+              <div class="privacy-selector" @click="togglePrivacy">
+                <i class="material-icons">{{
+                  privacy === "public" ? "public" : "lock"
+                }}</i>
+                <span>{{
+                  privacy === "public" ? "Công khai" : "Chỉ mình tôi"
+                }}</span>
+                <i class="material-icons arrow">arrow_drop_down</i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Privacy Dropdown -->
+          <div class="privacy-dropdown" v-if="showPrivacyMenu" @click.stop>
+            <div
+              class="privacy-option"
+              :class="{ active: privacy === 'public' }"
+              @click="selectPrivacy('public')"
+            >
+              <i class="material-icons">public</i>
+              <div class="privacy-option-text">
+                <span class="privacy-title">Công khai</span>
+                <span class="privacy-desc">Mọi người đều có thể xem</span>
+              </div>
+              <i class="material-icons check" v-if="privacy === 'public'"
+                >check_circle</i
+              >
+            </div>
+            <div
+              class="privacy-option"
+              :class="{ active: privacy === 'private' }"
+              @click="selectPrivacy('private')"
+            >
+              <i class="material-icons">lock</i>
+              <div class="privacy-option-text">
+                <span class="privacy-title">Chỉ mình tôi</span>
+                <span class="privacy-desc">Chỉ bạn có thể xem</span>
+              </div>
+              <i class="material-icons check" v-if="privacy === 'private'"
+                >check_circle</i
+              >
+            </div>
+          </div>
+
+          <!-- Textarea -->
+          <div class="fb-input">
+            <textarea
+              v-model="textDescription"
+              class="fb-input__textarea"
+              placeholder="Bạn đang nghĩ gì?"
+              rows="4"
+              @input="autoResize"
+              ref="composerTextarea"
+            ></textarea>
+          </div>
+
+          <!-- Media -->
+          <div class="fb-media">
+            <input
+              class="fb-media__file-input"
+              type="file"
+              @change="onFileChange"
+              ref="file"
+              name="file"
+              accept="image/*"
+            />
+
+            <div v-if="previewUrl" class="fb-media__preview">
+              <div class="fb-media__preview-inner">
+                <img :src="previewUrl" alt="preview" />
+                <button
+                  type="button"
+                  class="fb-media__remove"
+                  @click="removeImage"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <label
+              v-else
+              class="fb-media__dropzone"
+              @click="$refs.file.click()"
+            >
+              <div class="fb-media__dz-icon">🖼️</div>
+              <div class="fb-media__dz-text">Thêm ảnh/video</div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div class="fb-error" v-if="fillError">
+          Vui lòng nhập nội dung hoặc chọn ảnh
+        </div>
+
+        <!-- Footer actions -->
+        <div class="fb-actions">
+          <button
+            type="submit"
+            id="btn-post"
+            class="fb-btn fb-btn--primary"
+            :disabled="isLoading || (!textDescription && !file)"
+            v-if="!isLoading"
+          >
+            Đăng
+          </button>
+          <sync-loader :color="color" v-else></sync-loader>
+          <button
+            type="button"
+            class="fb-btn fb-btn--ghost"
+            @click.stop="closeModal"
+            v-if="!isLoading"
+          >
+            Đóng
+          </button>
+        </div>
       </div>
-      <div class="fb-card__body">
-        <!-- User row -->
-        <div class="fb-user-row">
-          <ProfileImage :id="currentUser._id || id" class="fb-user-row__avatar" />
-          <div class="fb-user-row__meta">
-            <div class="fb-user-row__name">{{ currentUser.displayName || currentUser.name || currentUser.email || 'Người dùng' }}</div>
-            <div class="privacy-selector" @click="togglePrivacy">
-              <i class="material-icons">{{ privacy === 'public' ? 'public' : 'lock' }}</i>
-              <span>{{ privacy === 'public' ? 'Công khai' : 'Chỉ mình tôi' }}</span>
-              <i class="material-icons arrow">arrow_drop_down</i>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Privacy Dropdown -->
-        <div class="privacy-dropdown" v-if="showPrivacyMenu" @click.stop>
-          <div class="privacy-option" :class="{ active: privacy === 'public' }" @click="selectPrivacy('public')">
-            <i class="material-icons">public</i>
-            <div class="privacy-option-text">
-              <span class="privacy-title">Công khai</span>
-              <span class="privacy-desc">Mọi người đều có thể xem</span>
-            </div>
-            <i class="material-icons check" v-if="privacy === 'public'">check_circle</i>
-          </div>
-          <div class="privacy-option" :class="{ active: privacy === 'private' }" @click="selectPrivacy('private')">
-            <i class="material-icons">lock</i>
-            <div class="privacy-option-text">
-              <span class="privacy-title">Chỉ mình tôi</span>
-              <span class="privacy-desc">Chỉ bạn có thể xem</span>
-            </div>
-            <i class="material-icons check" v-if="privacy === 'private'">check_circle</i>
-          </div>
-        </div>
-
-        <!-- Textarea -->
-        <div class="fb-input">
-          <textarea
-            v-model="textDescription"
-            class="fb-input__textarea"
-            placeholder="Bạn đang nghĩ gì?"
-            rows="4"
-            @input="autoResize"
-            ref="composerTextarea"
-          ></textarea>
-        </div>
-
-        <!-- Media -->
-        <div class="fb-media">
-          <input
-            class="fb-media__file-input"
-            type="file"
-            @change="onFileChange"
-            ref="file"
-            name="file"
-            accept="image/*"
-          />
-
-          <div v-if="previewUrl" class="fb-media__preview">
-            <div class="fb-media__preview-inner">
-              <img :src="previewUrl" alt="preview" />
-              <button type="button" class="fb-media__remove" @click="removeImage">×</button>
-            </div>
-          </div>
-          <label v-else class="fb-media__dropzone" @click="$refs.file.click()">
-            <div class="fb-media__dz-icon">🖼️</div>
-            <div class="fb-media__dz-text">Thêm ảnh/video</div>
-          </label>
-        </div>
-      </div>
-
-      <!-- Error -->
-      <div class="fb-error" v-if="fillError">Vui lòng nhập nội dung hoặc chọn ảnh</div>
-
-      <!-- Footer actions -->
-      <div class="fb-actions">
-        <button
-          type="submit"
-          id="btn-post"
-          class="fb-btn fb-btn--primary"
-          :disabled="isLoading || (!textDescription && !file)"
-          v-if="!isLoading"
-        >
-          Đăng
-        </button>
-        <sync-loader :color="color" v-else></sync-loader>
-        <button type="button" class="fb-btn fb-btn--ghost" @click.stop="closeModal" v-if="!isLoading">Đóng</button>
-      </div>
-    </div>
-  </form>
-</Teleport>
+    </form>
+  </Teleport>
 </template>
 
 <script>
@@ -134,19 +179,22 @@ export default {
       textDescription: "",
       fillError: false,
       postingSuccess: "",
-      privacy: 'public',
+      privacy: "public",
       showPrivacyMenu: false,
     };
   },
   computed: {
     currentUser() {
       return (this.$store && this.$store.state && this.$store.state.user) || {};
-    }
+    },
   },
   created() {
     try {
-      if (this.$store && (!this.$store.state.isUserLoaded || !this.$store.state.user?._id)) {
-        this.$store.dispatch('loadUser');
+      if (
+        this.$store &&
+        (!this.$store.state.isUserLoaded || !this.$store.state.user?._id)
+      ) {
+        this.$store.dispatch("loadUser");
       }
     } catch (_) {}
   },
@@ -155,7 +203,9 @@ export default {
       const file = this.$refs.file.files[0];
       this.file = file;
       if (this.previewUrl) {
-        try { URL.revokeObjectURL(this.previewUrl); } catch (_) {}
+        try {
+          URL.revokeObjectURL(this.previewUrl);
+        } catch (_) {}
       }
       this.previewUrl = file ? URL.createObjectURL(file) : "";
     },
@@ -163,23 +213,25 @@ export default {
       this.file = null;
       if (this.$refs.file) this.$refs.file.value = "";
       if (this.previewUrl) {
-        try { URL.revokeObjectURL(this.previewUrl); } catch (_) {}
+        try {
+          URL.revokeObjectURL(this.previewUrl);
+        } catch (_) {}
       }
       this.previewUrl = "";
     },
     closeModal() {
       this.removeImage();
-      this.textDescription = ''; // Reset text
+      this.textDescription = ""; // Reset text
       this.fillError = false; // Reset error state
-      this.$emit('close'); // Emit close event to parent component
+      this.$emit("close"); // Emit close event to parent component
     },
     autoResize() {
       // Cho textarea tự giãn chiều cao, phần thân card sẽ scroll chung
       const el = this.$refs.composerTextarea;
       if (!el) return;
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
-      el.style.overflowY = 'hidden';
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+      el.style.overflowY = "hidden";
     },
     async addImagePost() {
       // Kiểm tra nếu không có cả mô tả và ảnh thì báo lỗi
@@ -190,27 +242,25 @@ export default {
         this.postingSuccess = "Đăng bài viết thành công!";
 
         let formData = null;
-        let fileName = null;
 
         // Chỉ tạo FormData nếu có file
         if (this.file) {
           formData = new FormData();
           formData.append("file", this.file);
-          fileName = this.file.name;
         }
 
         const post = {
           description: this.textDescription || "", // Để trống nếu không có mô tả
           isImagePost: !!this.file, // true nếu có file, false nếu không
           userId: (this.currentUser && this.currentUser._id) || this.id,
-          file: fileName, // null nếu không có file
+          file: null, // Sẽ được cập nhật với Cloudinary URL sau khi upload
           privacy: this.privacy, // Thêm privacy
         };
 
         try {
           // Gọi addPost duy nhất với post và formData (có thể null)
           await this.$store.dispatch("addPost", { post, formData });
-          
+
           this.isLoading = false;
           this.closeModal();
           createToast(
@@ -246,27 +296,31 @@ export default {
   },
   mounted() {
     // Lock body scroll when modal opens
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
   },
   beforeUnmount() {
     // Restore body scroll when modal closes
-    document.body.style.overflow = '';
+    document.body.style.overflow = "";
   },
 };
 </script>
 
 <style lang="scss" scoped>
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(30px) scale(0.95);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
@@ -291,8 +345,7 @@ export default {
   max-width: 640px;
   background: #ffffff;
   border-radius: 18px;
-  box-shadow: 
-    0 25px 50px -12px rgba(102, 126, 234, 0.25),
+  box-shadow: 0 25px 50px -12px rgba(102, 126, 234, 0.25),
     0 0 0 1px rgba(102, 126, 234, 0.1);
   display: flex;
   flex-direction: column;
@@ -306,7 +359,11 @@ export default {
   position: relative;
   padding: 1.5rem 3.5rem 1.5rem 1.5rem;
   border-bottom: 1px solid rgba(102, 126, 234, 0.1);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  );
 }
 
 .fb-card__title {
@@ -389,7 +446,7 @@ export default {
   border-radius: 50%;
   border: 3px solid transparent;
   background: linear-gradient(white, white) padding-box,
-              linear-gradient(135deg, #667eea, #764ba2) border-box;
+    linear-gradient(135deg, #667eea, #764ba2) border-box;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
   transition: all 0.3s ease;
 }
@@ -547,7 +604,11 @@ export default {
   min-height: 180px;
   border: 2px dashed rgba(102, 126, 234, 0.3);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -561,7 +622,7 @@ export default {
 }
 
 .fb-media__dropzone::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -620,7 +681,7 @@ export default {
 }
 
 .fb-media__preview-inner::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -3px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -675,14 +736,18 @@ export default {
   align-items: center;
   gap: 0.5rem;
   font-weight: 500;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.05) 0%,
+    rgba(220, 38, 38, 0.05) 100%
+  );
   margin: 0 1.5rem;
   border-radius: 12px;
   padding: 0.875rem 1rem;
 }
 
 .fb-error::before {
-  content: '⚠️';
+  content: "⚠️";
   font-size: 1.125rem;
 }
 
@@ -692,7 +757,11 @@ export default {
   gap: 0.75rem;
   padding: 1.25rem 1.5rem;
   border-top: 1px solid rgba(102, 126, 234, 0.1);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.03) 0%,
+    rgba(118, 75, 162, 0.03) 100%
+  );
 }
 
 .fb-btn {
@@ -717,7 +786,7 @@ export default {
 }
 
 .fb-btn--primary::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);

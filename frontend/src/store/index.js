@@ -153,24 +153,30 @@ export default createStore({
     },
     async addPost({ commit, dispatch }, { post, formData = null }) {
       try {
-        // Tạo post trước
-        const postResponse = await postsApi.createPost(post);
+        let cloudinaryUrl = null;
 
-        let uploadSuccess = true;
-
-        // Chỉ upload file nếu có formData
+        // Upload file TRƯỚC nếu có formData
         if (formData) {
           const uploadResponse = await postsApi.uploadPostFile(formData);
-          uploadSuccess = uploadResponse.status === 200;
+          if (uploadResponse.status === 200 && uploadResponse.data?.file) {
+            cloudinaryUrl = uploadResponse.data.file;
+            // Cập nhật post.file với Cloudinary URL
+            post.file = cloudinaryUrl;
+          } else {
+            throw new Error("Upload file failed");
+          }
         }
 
-        if (postResponse.status === 200 && uploadSuccess) {
-          // Thay vì ADD_POST với dữ liệu cũ, load lại posts để có dữ liệu đầy đủ
+        // Tạo post với Cloudinary URL (nếu có)
+        const postResponse = await postsApi.createPost(post);
+
+        if (postResponse.status === 200) {
+          // Load lại posts để có dữ liệu đầy đủ từ backend
           await dispatch("loadPosts");
           return { success: true, post: postResponse.data };
         }
       } catch (error) {
-        console.error("Add post error:", error);
+        console.error("❌ Lỗi đăng bài viết:", error);
         throw error;
       }
     },

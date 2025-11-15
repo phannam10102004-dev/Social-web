@@ -48,7 +48,7 @@
                 <img
                   :src="
                     member.profilePicture
-                      ? $buildAssetUrl('uploads/user/' + member.profilePicture)
+                      ? $buildProfilePictureUrl(member.profilePicture)
                       : require('@/assets/defaultProfile.png')
                   "
                   :alt="member.displayName"

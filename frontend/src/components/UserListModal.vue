@@ -18,7 +18,7 @@
               <div class="user-avatar">
                 <img
                   v-if="user.profilePicture"
-                  :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                  :src="$buildProfilePictureUrl(user.profilePicture)"
                   alt="Avatar"
                 />
                 <img

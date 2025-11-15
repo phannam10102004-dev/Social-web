@@ -3,39 +3,39 @@
     <div class="messages-date-separator" v-if="messages.length > 0">
       {{ formatDate(messages[0].timestamp) }}
     </div>
-    
-    <div v-for="(message, index) in groupedMessages" :key="message && message._id ? message._id : index" class="message-group">
+
+    <div
+      v-for="(message, index) in groupedMessages"
+      :key="message && message._id ? message._id : index"
+      class="message-group"
+    >
       <div class="message-timestamp" v-if="shouldShowTimestamp(index)">
-        {{ message && message.timestamp ? formatTime(message.timestamp) : '' }}
+        {{ message && message.timestamp ? formatTime(message.timestamp) : "" }}
       </div>
-      
-      <div 
+
+      <div
         class="message-bubble-container"
-        :class="{ 'outgoing': isMyMessage(message) }"
+        :class="{ outgoing: isMyMessage(message) }"
         v-if="shouldRenderMessage(message)"
       >
         <div class="message-avatar" v-if="message && !isMyMessage(message)">
-          <img 
+          <img
             v-if="message && message.senderAvatar"
-            :src="getAvatarUrl(message.senderAvatar)" 
+            :src="getAvatarUrl(message.senderAvatar)"
             alt="Avatar"
             referrerpolicy="no-referrer"
             crossorigin="anonymous"
             @error="handleAvatarError"
           />
-          <img 
-            v-else
-            src="@/assets/defaultProfile.png" 
-            alt="Default Avatar" 
-          />
+          <img v-else src="@/assets/defaultProfile.png" alt="Default Avatar" />
         </div>
-        
+
         <div class="message-content-wrapper">
-          <div 
+          <div
             class="message-bubble"
-            :class="{ 
-              'outgoing': isMyMessage(message),
-              'incoming': !isMyMessage(message)
+            :class="{
+              outgoing: isMyMessage(message),
+              incoming: !isMyMessage(message),
             }"
             @mousedown="startLongPress($event, message)"
             @mouseup="cancelLongPress"
@@ -44,28 +44,48 @@
             @touchend.passive="cancelLongPress"
           >
             <!-- More Options Button -->
-            <button 
-              v-if="isMyMessage(message)" 
+            <button
+              v-if="isMyMessage(message)"
               class="message-more-btn"
               @click.stop.prevent="showContextMenu($event, message)"
             >
               <i class="material-icons">more_horiz</i>
             </button>
 
-            <div v-if="message && message.messageType === 'image'" class="message-image">
-              <img 
-                :src="message && (message.fileUrl || (message.file ? `http://localhost:3000/uploads/${message.file}` : ''))" 
-                alt="Image" 
+            <div
+              v-if="message && message.messageType === 'image'"
+              class="message-image"
+            >
+              <img
+                :src="
+                  message &&
+                  (message.fileUrl ||
+                    (message.file ? $buildAssetUrl(message.file) : ''))
+                "
+                alt="Image"
                 @load="handleImageLoad"
                 @error="handleImageError"
               />
-              <div v-if="!message.fileUrl && !message.file" class="debug-info" style="color: red; font-size: 10px;">
+              <div
+                v-if="!message.fileUrl && !message.file"
+                class="debug-info"
+                style="color: red; font-size: 10px"
+              >
                 No image URL found
               </div>
             </div>
-            <div v-else-if="message && message.messageType === 'file'" class="message-file" @click="downloadFile(message)">
+            <div
+              v-else-if="message && message.messageType === 'file'"
+              class="message-file"
+              @click="downloadFile(message)"
+            >
               <i class="material-icons">attach_file</i>
-              <span>{{ message.originalFileName || message.fileName || message.file || '' }}</span>
+              <span>{{
+                message.originalFileName ||
+                message.fileName ||
+                message.file ||
+                ""
+              }}</span>
               <i class="material-icons download-icon">download</i>
             </div>
             <span v-if="message && message.content">{{ message.content }}</span>
@@ -73,9 +93,9 @@
               <i class="material-icons sending">schedule</i>
             </div>
           </div>
-          
+
           <!-- Message Reactions Summary - Moved outside bubble -->
-          <MessageReactionsSummary 
+          <MessageReactionsSummary
             v-if="message"
             :reactions="getMessageReactions(message)"
             @show-reactors="showMessageReactors(message)"
@@ -83,13 +103,13 @@
         </div>
       </div>
     </div>
-    
+
     <div class="messages-end" ref="messagesEnd"></div>
-    
+
     <!-- Floating Emoji Animation -->
     <transition-group name="float" tag="div" class="floating-emojis">
-      <div 
-        v-for="emoji in floatingEmojis" 
+      <div
+        v-for="emoji in floatingEmojis"
         :key="emoji.id"
         class="floating-emoji"
         :style="{ left: emoji.x + 'px', top: emoji.y + 'px' }"
@@ -97,31 +117,39 @@
         {{ emoji.emoji }}
       </div>
     </transition-group>
-    
+
     <!-- Reaction Picker -->
-    <MessageReactionPicker 
+    <MessageReactionPicker
       :show="showReactionPicker"
       :position="reactionPickerPosition"
       :selected-message="selectedMessage"
       :current-user-id="currentUserId"
       @select="handleReactionSelect"
     />
-    
+
     <!-- Message Reactors Modal -->
-    <MessageReactorsModal 
+    <MessageReactorsModal
       :show="showReactorsModal"
-      :reactions="selectedMessageForReactors ? getMessageReactions(selectedMessageForReactors) : []"
+      :reactions="
+        selectedMessageForReactors
+          ? getMessageReactions(selectedMessageForReactors)
+          : []
+      "
       @close="showReactorsModal = false"
     />
 
     <!-- Context Menu -->
-    <div 
-      v-if="showMessageMenu" 
+    <div
+      v-if="showMessageMenu"
       class="message-context-menu"
       :style="{ top: menuPosition.y + 'px', left: menuPosition.x + 'px' }"
       @click.stop
     >
-      <div class="menu-item" @click="editMessage" v-if="canEdit(contextMessage)">
+      <div
+        class="menu-item"
+        @click="editMessage"
+        v-if="canEdit(contextMessage)"
+      >
         <i class="material-icons">edit</i>
         <span>Sửa</span>
       </div>
@@ -141,7 +169,7 @@
           </button>
         </div>
         <div class="edit-modal-body">
-          <textarea 
+          <textarea
             v-model="editingContent"
             placeholder="Nhập nội dung tin nhắn..."
             ref="editTextarea"
@@ -150,13 +178,23 @@
         </div>
         <div class="edit-modal-footer">
           <button @click="cancelEdit" class="btn-cancel">Hủy</button>
-          <button @click="saveEdit" class="btn-save" :disabled="!editingContent.trim()">Lưu</button>
+          <button
+            @click="saveEdit"
+            class="btn-save"
+            :disabled="!editingContent.trim()"
+          >
+            Lưu
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="edit-modal-overlay" @click="showDeleteModal = false">
+    <div
+      v-if="showDeleteModal"
+      class="edit-modal-overlay"
+      @click="showDeleteModal = false"
+    >
       <div class="edit-modal delete-confirm-modal" @click.stop>
         <div class="edit-modal-header">
           <h3>Xác nhận xóa</h3>
@@ -168,7 +206,9 @@
           <p>Bạn có chắc muốn xóa tin nhắn này?</p>
         </div>
         <div class="edit-modal-footer">
-          <button @click="showDeleteModal = false" class="btn-cancel">Hủy</button>
+          <button @click="showDeleteModal = false" class="btn-cancel">
+            Hủy
+          </button>
           <button @click="deleteMessage" class="btn-delete">Xóa</button>
         </div>
       </div>
@@ -177,26 +217,26 @@
 </template>
 
 <script>
-import MessageReactionPicker from '@/components/MessageReactionPicker.vue';
-import MessageReactionsSummary from '@/components/MessageReactionsSummary.vue';
-import MessageReactorsModal from '@/components/MessageReactorsModal.vue';
+import MessageReactionPicker from "@/components/MessageReactionPicker.vue";
+import MessageReactionsSummary from "@/components/MessageReactionsSummary.vue";
+import MessageReactorsModal from "@/components/MessageReactorsModal.vue";
 
 export default {
-  name: 'ChatMessages',
+  name: "ChatMessages",
   components: {
     MessageReactionPicker,
     MessageReactionsSummary,
-    MessageReactorsModal
+    MessageReactorsModal,
   },
   props: {
     messages: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     currentUserId: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
   data() {
     return {
@@ -216,15 +256,15 @@ export default {
       contextMessage: null,
       showEditModal: false,
       showDeleteModal: false,
-      editingContent: '',
-      editingMessageId: null
+      editingContent: "",
+      editingMessageId: null,
     };
   },
   computed: {
     // Group messages by time (messages within 2 minutes of each other)
     groupedMessages() {
       return this.messages;
-    }
+    },
   },
   methods: {
     isMyMessage(message) {
@@ -238,69 +278,75 @@ export default {
     shouldRenderMessage(message) {
       if (!message) return false;
       // Show if has text content
-      if (message.content && String(message.content).trim().length > 0) return true;
+      if (message.content && String(message.content).trim().length > 0)
+        return true;
       // Show if has media/file
-      if (message.messageType === 'image' && (message.fileUrl || message.file)) return true;
-      if (message.messageType === 'file' && (message.fileName || message.file)) return true;
+      if (message.messageType === "image" && (message.fileUrl || message.file))
+        return true;
+      if (message.messageType === "file" && (message.fileName || message.file))
+        return true;
       return false;
     },
     formatDate(timestamp) {
-      if (!timestamp) return '';
-      
+      if (!timestamp) return "";
+
       const date = new Date(timestamp);
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       if (
         date.getDate() === today.getDate() &&
         date.getMonth() === today.getMonth() &&
         date.getFullYear() === today.getFullYear()
       ) {
-        return 'Hôm nay';
+        return "Hôm nay";
       } else if (
         date.getDate() === yesterday.getDate() &&
         date.getMonth() === yesterday.getMonth() &&
         date.getFullYear() === yesterday.getFullYear()
       ) {
-        return 'Hôm qua';
+        return "Hôm qua";
       } else {
-        return date.toLocaleDateString('vi-VN', { 
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric'
+        return date.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
         });
       }
     },
     formatTime(timestamp) {
-      if (!timestamp) return '';
+      if (!timestamp) return "";
       const date = new Date(timestamp);
-      return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     },
     shouldShowTimestamp(index) {
       // Show timestamp for first message or if more than 15 minutes passed since previous message
       if (index === 0) return true;
-      
+
       const currentMsg = this.messages[index];
       const prevMsg = this.messages[index - 1];
-      
+
       if (!currentMsg.timestamp || !prevMsg.timestamp) return false;
-      
+
       const currentTime = new Date(currentMsg.timestamp).getTime();
       const prevTime = new Date(prevMsg.timestamp).getTime();
-      
-      return (currentTime - prevTime) > 15 * 60 * 1000; // 15 minutes
+
+      return currentTime - prevTime > 15 * 60 * 1000; // 15 minutes
     },
     handleImageLoad() {
-      console.log('✅ Image loaded successfully');
+      console.log("✅ Image loaded successfully");
       this.scrollToBottom();
     },
     handleImageError(event) {
-      console.error('❌ Image load error:', event.target.src);
+      console.error("❌ Image load error:", event.target.src);
     },
     scrollToBottom() {
       if (this.$refs.messagesEnd) {
-        this.$refs.messagesEnd.scrollIntoView({ behavior: 'smooth' });
+        this.$refs.messagesEnd.scrollIntoView({ behavior: "smooth" });
       }
     },
     handleImageLoad() {
@@ -310,78 +356,78 @@ export default {
       });
     },
     handleImageError(event) {
-      console.error('Error loading image:', event);
+      console.error("Error loading image:", event);
       // Có thể hiển thị placeholder image hoặc error message
     },
-    
+
     downloadFile(message) {
       if (!message.file) return;
-      
-      const token = localStorage.getItem('token');
+
+      const token = localStorage.getItem("token");
       const filename = message.file;
       const downloadUrl = `http://localhost:3000/api/messages/download/${filename}`;
-      
+
       // Create a temporary link and trigger download
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = downloadUrl;
       link.download = message.originalFileName || message.file;
-      link.target = '_blank';
-      
+      link.target = "_blank";
+
       // Add auth header via fetch and blob
       fetch(downloadUrl, {
-        headers: { token }
+        headers: { token },
       })
-      .then(response => response.blob())
-      .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      })
-      .catch(error => {
-        console.error('Download error:', error);
-        this.$emit('show-error', 'Không thể tải file');
-      });
+        .then((response) => response.blob())
+        .then((blob) => {
+          const url = window.URL.createObjectURL(blob);
+          link.href = url;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        })
+        .catch((error) => {
+          console.error("Download error:", error);
+          this.$emit("show-error", "Không thể tải file");
+        });
     },
 
     showContextMenu(event, message) {
       if (!this.isMyMessage(message)) return;
-      
+
       this.contextMessage = message;
-      
+
       // Calculate position to prevent menu from going off-screen
       const menuWidth = 150;
       const menuHeight = 100;
       let x = event.clientX;
       let y = event.clientY;
-      
+
       // If too close to right edge, position menu to the left
       if (x + menuWidth > window.innerWidth) {
         x = event.clientX - menuWidth;
       }
-      
+
       // If too close to bottom, position menu above
       if (y + menuHeight > window.innerHeight) {
         y = event.clientY - menuHeight;
       }
-      
+
       this.menuPosition = { x, y };
       this.showMessageMenu = true;
 
       // Close menu when clicking outside
       const closeMenu = () => {
         this.showMessageMenu = false;
-        document.removeEventListener('click', closeMenu);
+        document.removeEventListener("click", closeMenu);
       };
       setTimeout(() => {
-        document.addEventListener('click', closeMenu);
+        document.addEventListener("click", closeMenu);
       }, 0);
     },
 
     canEdit(message) {
-      if (!message || message.messageType !== 'text') return false;
+      if (!message || message.messageType !== "text") return false;
       // Check if message has been read by others (if readBy exists)
       if (message.readBy && message.readBy.length > 1) return false;
       return true;
@@ -390,9 +436,9 @@ export default {
     editMessage() {
       this.showMessageMenu = false;
       this.editingMessageId = this.contextMessage._id;
-      this.editingContent = this.contextMessage.content || '';
+      this.editingContent = this.contextMessage.content || "";
       this.showEditModal = true;
-      
+
       this.$nextTick(() => {
         if (this.$refs.editTextarea) {
           this.$refs.editTextarea.focus();
@@ -402,7 +448,7 @@ export default {
 
     cancelEdit() {
       this.showEditModal = false;
-      this.editingContent = '';
+      this.editingContent = "";
       this.editingMessageId = null;
     },
 
@@ -410,11 +456,16 @@ export default {
       if (!this.editingContent.trim() || !this.editingMessageId) return;
 
       try {
-        const MessageAPI = (await import('@/api/messages')).default;
-        await MessageAPI.editMessage(this.editingMessageId, this.editingContent.trim());
-        
+        const MessageAPI = (await import("@/api/messages")).default;
+        await MessageAPI.editMessage(
+          this.editingMessageId,
+          this.editingContent.trim()
+        );
+
         // Update local message
-        const messageIndex = this.messages.findIndex(m => m._id === this.editingMessageId);
+        const messageIndex = this.messages.findIndex(
+          (m) => m._id === this.editingMessageId
+        );
         if (messageIndex !== -1) {
           this.messages[messageIndex].content = this.editingContent.trim();
           this.messages[messageIndex].isEdited = true;
@@ -422,8 +473,11 @@ export default {
 
         this.cancelEdit();
       } catch (error) {
-        console.error('Edit message error:', error);
-        this.$emit('show-error', error.response?.data?.error || 'Không thể sửa tin nhắn');
+        console.error("Edit message error:", error);
+        this.$emit(
+          "show-error",
+          error.response?.data?.error || "Không thể sửa tin nhắn"
+        );
       }
     },
 
@@ -436,152 +490,164 @@ export default {
       if (!this.contextMessage) return;
 
       try {
-        const MessageAPI = (await import('@/api/messages')).default;
+        const MessageAPI = (await import("@/api/messages")).default;
         await MessageAPI.deleteMessage(this.contextMessage._id);
-        
+
         // Remove from local messages or mark as deleted
-        const messageIndex = this.messages.findIndex(m => m._id === this.contextMessage._id);
+        const messageIndex = this.messages.findIndex(
+          (m) => m._id === this.contextMessage._id
+        );
         if (messageIndex !== -1) {
           this.messages.splice(messageIndex, 1);
         }
 
         this.showDeleteModal = false;
-
       } catch (error) {
-        console.error('Delete message error:', error);
-        this.$emit('show-error', 'Không thể xóa tin nhắn');
+        console.error("Delete message error:", error);
+        this.$emit("show-error", "Không thể xóa tin nhắn");
         this.showDeleteModal = false;
       }
     },
-    
+
     getAvatarUrl(avatarPath) {
       if (!avatarPath) {
-        return '';
+        return "";
       }
-      
+
       // Nếu đã là absolute URL (bắt đầu bằng http/https)
-      if (avatarPath.startsWith('http')) {
+      if (avatarPath.startsWith("http")) {
         return avatarPath; // Trả về nguyên URL cho Google OAuth avatar
       }
-      
-      // Nếu là relative path (uploaded avatar), thêm base URL  
-      const fullUrl = `http://localhost:3000/uploads/user/${avatarPath}`;
+
+      // Nếu là relative path (uploaded avatar), thêm base URL
+      const fullUrl = this.$buildProfilePictureUrl(avatarPath);
       return fullUrl;
     },
-    
+
     handleAvatarError(event) {
-      console.error('❌ Avatar load error:', event.target.src);
-      console.log('🔄 Falling back to default avatar...');
-      
+      console.error("❌ Avatar load error:", event.target.src);
+      console.log("🔄 Falling back to default avatar...");
+
       // Prevent infinite error loop
-      if (event.target.src.includes('defaultProfile.png')) {
+      if (event.target.src.includes("defaultProfile.png")) {
         return;
       }
-      
+
       // Fallback to default avatar
-      event.target.src = require('@/assets/defaultProfile.png');
+      event.target.src = require("@/assets/defaultProfile.png");
     },
-    
+
     // Reaction Methods
     startLongPress(event, message) {
       if (!message) return;
-      
+
       event.preventDefault();
-      
+
       this.selectedMessage = message;
       this.lastEvent = event;
-      
+
       this.longPressTimer = setTimeout(() => {
         this.showReactionPickerAtPosition(event);
       }, this.longPressDuration);
     },
-    
+
     cancelLongPress() {
       if (this.longPressTimer) {
         clearTimeout(this.longPressTimer);
         this.longPressTimer = null;
       }
     },
-    
+
     showReactionPickerAtPosition(event) {
-      const bubble = event.target.closest('.message-bubble');
+      const bubble = event.target.closest(".message-bubble");
       if (!bubble) return;
       const rect = bubble.getBoundingClientRect();
-      
-      console.log('🎯 [ChatMessages] Opening picker for message:', {
+
+      console.log("🎯 [ChatMessages] Opening picker for message:", {
         messageId: this.selectedMessage?._id,
         reactions: this.selectedMessage?.reactions,
-        currentUserId: this.currentUserId
+        currentUserId: this.currentUserId,
       });
-      
+
       // Place picker BELOW the message bubble (like chat popup)
       const PICKER_HALF_WIDTH = 190; // ~380px / 2 (see picker component)
       this.reactionPickerPosition = {
         top: rect.bottom + 8, // below bubble with small gap
-        left: rect.left + (rect.width / 2) - PICKER_HALF_WIDTH
+        left: rect.left + rect.width / 2 - PICKER_HALF_WIDTH,
       };
       this.showReactionPicker = true;
-      
+
       // Delay to prevent immediate close
       setTimeout(() => {
-        document.addEventListener('click', this.handleClickOutsideReactionPicker);
+        document.addEventListener(
+          "click",
+          this.handleClickOutsideReactionPicker
+        );
       }, 100);
     },
-    
+
     handleClickOutsideReactionPicker(event) {
       if (this.showReactionPicker) {
-        const picker = document.querySelector('.reaction-picker');
-        const messageBubble = event.target.closest('.message-bubble');
+        const picker = document.querySelector(".reaction-picker");
+        const messageBubble = event.target.closest(".message-bubble");
         const isClickInsidePicker = picker && picker.contains(event.target);
-        
+
         // Chỉ đóng khi click bên ngoài cả picker VÀ message bubble
         if (!isClickInsidePicker && !messageBubble) {
           this.showReactionPicker = false;
           this.selectedMessage = null;
-          document.removeEventListener('click', this.handleClickOutsideReactionPicker);
+          document.removeEventListener(
+            "click",
+            this.handleClickOutsideReactionPicker
+          );
         }
       }
     },
-    
+
     handleReactionSelect(emoji) {
       if (this.selectedMessage) {
         const currentUserId = this.currentUserId;
-        const existingReaction = this.selectedMessage.reactions?.find(r => r.userId === currentUserId);
+        const existingReaction = this.selectedMessage.reactions?.find(
+          (r) => r.userId === currentUserId
+        );
         const newReaction = existingReaction?.emoji === emoji ? null : emoji;
         this.applyReaction(this.selectedMessage, newReaction);
       }
       this.showReactionPicker = false;
       this.selectedMessage = null;
-      document.removeEventListener('click', this.handleClickOutsideReactionPicker);
+      document.removeEventListener(
+        "click",
+        this.handleClickOutsideReactionPicker
+      );
     },
-    
+
     applyReaction(message, reaction) {
       // Create floating emoji animation
       if (reaction) {
         this.createFloatingEmoji(reaction, this.lastEvent);
       }
-      
+
       // Update local message object
       // Convert message.reactions to array format if needed
       if (!message.reactions) {
         message.reactions = [];
       }
-      
+
       const currentUserId = this.currentUserId;
       const existingReactionIndex = message.reactions.findIndex(
-        r => r.userId === currentUserId
+        (r) => r.userId === currentUserId
       );
-      
+
       if (reaction) {
         // Add or update reaction
         const currentUser = this.$store?.state?.user;
         const reactionObj = {
           userId: currentUserId,
-          userName: currentUser?.displayName || currentUser?.email || 'Bạn',
+          userName: currentUser?.displayName || currentUser?.email || "Bạn",
           userAvatar: currentUser?.profilePicture || null,
-          emoji: reaction
+          emoji: reaction,
         };
-        
+
         if (existingReactionIndex !== -1) {
           // Update existing - Vue 3 auto tracks
           message.reactions[existingReactionIndex] = reactionObj;
@@ -595,55 +661,57 @@ export default {
           message.reactions.splice(existingReactionIndex, 1);
         }
       }
-      
+
       // Emit event to parent to save reaction
-      this.$emit('add-reaction', {
+      this.$emit("add-reaction", {
         messageId: message._id,
-        reaction: reaction
+        reaction: reaction,
       });
     },
-    
+
     createFloatingEmoji(emoji, clickEvent) {
       const id = Date.now() + Math.random();
       const floatingEmoji = {
         id,
         emoji,
         x: clickEvent ? clickEvent.clientX : window.innerWidth / 2,
-        y: clickEvent ? clickEvent.clientY : window.innerHeight / 2
+        y: clickEvent ? clickEvent.clientY : window.innerHeight / 2,
       };
-      
+
       this.floatingEmojis.push(floatingEmoji);
-      
+
       // Remove after animation completes
       setTimeout(() => {
-        const index = this.floatingEmojis.findIndex(e => e.id === id);
+        const index = this.floatingEmojis.findIndex((e) => e.id === id);
         if (index !== -1) {
           this.floatingEmojis.splice(index, 1);
         }
       }, 1000);
     },
-    
+
     getMessageReactions(message) {
       // Convert old format to new format if needed
       if (message.reaction && !message.reactions) {
-        return [{
-          userId: message.senderId,
-          userName: 'Unknown',
-          userAvatar: null,
-          emoji: message.reaction
-        }];
+        return [
+          {
+            userId: message.senderId,
+            userName: "Unknown",
+            userAvatar: null,
+            emoji: message.reaction,
+          },
+        ];
       }
       return message.reactions || [];
     },
-    
+
     showMessageReactors(message) {
       this.selectedMessageForReactors = message;
       this.showReactorsModal = true;
     },
-    
+
     logMessageForDebug(message) {
-      return ''; // Method for debugging, now cleaned up
-    }
+      return ""; // Method for debugging, now cleaned up
+    },
   },
   updated() {
     if (this.shouldAutoScroll) {
@@ -662,8 +730,8 @@ export default {
         // Nếu chỉ update reactions/properties, không scroll
         this.shouldAutoScroll = false;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -675,21 +743,25 @@ export default {
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, rgba(250, 250, 250, 0.5) 0%, rgba(255, 255, 255, 0.5) 100%);
-  
+  background: linear-gradient(
+    135deg,
+    rgba(250, 250, 250, 0.5) 0%,
+    rgba(255, 255, 255, 0.5) 100%
+  );
+
   &::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 4px;
   }
-  
+
   &::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #5568d3 0%, #63428b 100%);
   }
@@ -704,20 +776,25 @@ export default {
   position: relative;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  
-  &::before, &::after {
+
+  &::before,
+  &::after {
     content: "";
     position: absolute;
     top: 50%;
     width: calc(35% - 10px);
     height: 1px;
-    background: linear-gradient(to right, transparent, rgba(102, 126, 234, 0.3));
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(102, 126, 234, 0.3)
+    );
   }
-  
+
   &::before {
     left: 0;
   }
-  
+
   &::after {
     right: 0;
     background: linear-gradient(to left, transparent, rgba(102, 126, 234, 0.3));
@@ -744,7 +821,7 @@ export default {
   align-items: flex-start;
   margin-bottom: 0.5rem;
   animation: messageSlideIn 0.3s ease;
-  
+
   &.outgoing {
     flex-direction: row-reverse;
     align-items: flex-start;
@@ -770,7 +847,7 @@ export default {
   flex-shrink: 0;
   border: 2px solid rgba(102, 126, 234, 0.15);
   align-self: flex-start;
-  
+
   img {
     width: 100%;
     height: 100%;
@@ -802,7 +879,7 @@ export default {
   position: relative;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
-  
+
   &:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -812,20 +889,20 @@ export default {
       visibility: visible;
     }
   }
-  
+
   &.incoming {
     background: white;
     color: #1e293b;
     border-bottom-left-radius: 4px;
     border: 1px solid rgba(226, 232, 240, 0.6);
   }
-  
+
   &.outgoing {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border-bottom-right-radius: 4px;
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    
+
     &:hover {
       box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     }
@@ -867,7 +944,7 @@ export default {
 
 .message-image {
   margin-bottom: 0.5rem;
-  
+
   img {
     max-width: 280px;
     max-height: 350px;
@@ -878,12 +955,12 @@ export default {
     cursor: pointer;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    
+
     &:hover {
       transform: scale(1.03);
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     }
-    
+
     &:loading {
       background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
       min-height: 120px;
@@ -903,22 +980,22 @@ export default {
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   &:hover {
     background: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
   }
-  
+
   i.material-icons {
     font-size: 20px;
   }
-  
+
   .download-icon {
     margin-left: auto;
     font-size: 18px;
     opacity: 0.7;
   }
-  
+
   span {
     font-size: 0.8125rem;
     font-weight: 500;
@@ -933,7 +1010,7 @@ export default {
   display: flex;
   align-items: center;
   margin-top: 0.25rem;
-  
+
   .sending {
     font-size: 14px;
     color: rgba(255, 255, 255, 0.8);
@@ -1042,13 +1119,13 @@ export default {
   .chat-messages {
     padding: 1rem;
   }
-  
+
   .message-bubble {
     max-width: 80%;
     font-size: 0.875rem;
     padding: 0.625rem 0.875rem;
   }
-  
+
   .message-image img {
     max-width: 240px;
     max-height: 300px;
@@ -1059,18 +1136,18 @@ export default {
   .chat-messages {
     padding: 0.75rem;
   }
-  
+
   .message-bubble {
     max-width: 85%;
     font-size: 0.8125rem;
   }
-  
+
   .message-avatar {
     width: 28px;
     height: 28px;
     margin-right: 8px;
   }
-  
+
   .message-image img {
     max-width: 200px;
     max-height: 250px;

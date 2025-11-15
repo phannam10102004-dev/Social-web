@@ -5,7 +5,12 @@ import store from "./store";
 import "ant-design-vue/dist/reset.css";
 import Antd from "ant-design-vue";
 import vue3GoogleLogin from "vue3-google-login";
-import { GOOGLE_CLIENT_ID, UPLOAD_BASE_URL, buildAssetUrl } from "./config/env";
+import {
+  GOOGLE_CLIENT_ID,
+  UPLOAD_BASE_URL,
+  buildAssetUrl,
+  buildProfilePictureUrl,
+} from "./config/env";
 
 const app = createApp(App);
 
@@ -20,5 +25,6 @@ app.use(Antd);
 
 app.config.globalProperties.$uploadBaseUrl = UPLOAD_BASE_URL;
 app.config.globalProperties.$buildAssetUrl = buildAssetUrl;
+app.config.globalProperties.$buildProfilePictureUrl = buildProfilePictureUrl;
 
 app.mount("#app");

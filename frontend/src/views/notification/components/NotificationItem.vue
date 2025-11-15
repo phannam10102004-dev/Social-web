@@ -7,9 +7,7 @@
     <div class="notification-avatar">
       <img
         v-if="notification.fromUser?.profilePicture"
-        :src="
-          $buildAssetUrl('uploads/user/' + notification.fromUser.profilePicture)
-        "
+        :src="$buildProfilePictureUrl(notification.fromUser.profilePicture)"
         :alt="notification.fromUser.displayName"
       />
       <img
@@ -55,10 +53,7 @@
       v-if="notification.postId && notification.postImage"
       class="notification-preview"
     >
-      <img
-        :src="$buildAssetUrl('uploads/posts/' + notification.postImage)"
-        alt="Post preview"
-      />
+      <img :src="$buildAssetUrl(notification.postImage)" alt="Post preview" />
     </div>
 
     <!-- Unread indicator -->

@@ -31,7 +31,7 @@
                 v-if="friend && friend.profilePicture"
                 :src="
                   friend && friend.profilePicture
-                    ? $buildAssetUrl('uploads/user/' + friend.profilePicture)
+                    ? $buildProfilePictureUrl(friend.profilePicture)
                     : ''
                 "
                 alt="Avatar"

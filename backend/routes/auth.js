@@ -93,6 +93,20 @@ router.post("/upload", async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
+    // Check if Cloudinary is configured
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      console.error("❌ Cloudinary chưa được cấu hình - thiếu biến môi trường");
+      return res.status(500).json({
+        error: "Upload service not configured",
+        details:
+          "Please configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables",
+      });
+    }
+
     const file = req.files.file;
 
     // Upload to Cloudinary
@@ -104,10 +118,19 @@ router.post("/upload", async (req, res) => {
       publicId: result.public_id, // Store for deletion later
     });
   } catch (err) {
-    console.error("Upload avatar error:", err);
+    console.error("❌ Lỗi upload avatar:", err);
+
+    // Provide more specific error messages
+    let errorMessage = "Upload failed";
+    if (err.message) {
+      errorMessage = err.message;
+    } else if (err.http_code) {
+      errorMessage = `Cloudinary error: ${err.message || "Unknown error"}`;
+    }
+
     return res
       .status(500)
-      .json({ error: "Upload failed", details: err.message });
+      .json({ error: "Upload failed", details: errorMessage });
   }
 });
 
@@ -185,7 +208,7 @@ router.get("/user", async (req, res) => {
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
     if (err) {
-      console.error("JWT verification error:", err.message);
+      console.error("❌ Lỗi xác thực JWT:", err.message);
       return res.status(401).json({
         message: "unauthorized",
         error: err.message,
@@ -196,7 +219,7 @@ router.get("/user", async (req, res) => {
 
     await User.findOne({ _id: decoded.userId }, (err, user) => {
       if (err) {
-        console.error("Find user error:", err);
+        console.error("❌ Lỗi tìm user:", err);
         return res.status(500).json({ message: "Database error" });
       }
       return res.status(200).json({
@@ -308,7 +331,7 @@ router.get(
       console.log("Google callback successful, user:", req.user?.email);
 
       if (!req.user) {
-        console.error("No user found in request after authentication");
+        console.error("❌ Không tìm thấy user sau khi xác thực");
         return res.redirect("http://localhost:8080/#/login?error=no_user");
       }
 

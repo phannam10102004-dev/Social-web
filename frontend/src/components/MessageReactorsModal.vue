@@ -8,40 +8,40 @@
             <i class="material-icons">close</i>
           </button>
         </div>
-        
+
         <div class="modal-tabs">
-          <button 
+          <button
             class="tab-btn"
-            :class="{ 'active': selectedTab === 'all' }"
+            :class="{ active: selectedTab === 'all' }"
             @click="selectedTab = 'all'"
           >
             Tất cả {{ reactions.length }}
           </button>
-          <button 
-            v-for="emoji in uniqueEmojis" 
+          <button
+            v-for="emoji in uniqueEmojis"
             :key="emoji"
             class="tab-btn"
-            :class="{ 'active': selectedTab === emoji }"
+            :class="{ active: selectedTab === emoji }"
             @click="selectedTab = emoji"
           >
             {{ emoji }} {{ getEmojiCount(emoji) }}
           </button>
         </div>
-        
+
         <div class="modal-body">
           <div class="reactors-list">
-            <div 
-              v-for="reactor in filteredReactors" 
+            <div
+              v-for="reactor in filteredReactors"
               :key="reactor.userId"
               class="reactor-item"
             >
-              <img 
+              <img
                 v-if="reactor.userAvatar"
                 :src="getUserAvatarUrl(reactor.userAvatar)"
                 class="reactor-avatar"
                 @error="handleAvatarError"
               />
-              <img 
+              <img
                 v-else
                 src="@/assets/defaultProfile.png"
                 class="reactor-avatar"
@@ -51,7 +51,7 @@
               </div>
               <span class="reactor-emoji">{{ reactor.emoji }}</span>
             </div>
-            
+
             <div v-if="filteredReactors.length === 0" class="empty-state">
               <p>Chưa có cảm xúc nào</p>
             </div>
@@ -64,60 +64,60 @@
 
 <script>
 export default {
-  name: 'MessageReactorsModal',
+  name: "MessageReactorsModal",
   props: {
     show: {
       type: Boolean,
-      default: false
+      default: false,
     },
     reactions: {
       type: Array,
-      default: () => []
+      default: () => [],
       // Format: [{ userId, userName, userAvatar, emoji }]
-    }
+    },
   },
   data() {
     return {
-      selectedTab: 'all'
+      selectedTab: "all",
     };
   },
   computed: {
     uniqueEmojis() {
-      const emojis = new Set(this.reactions.map(r => r.emoji));
+      const emojis = new Set(this.reactions.map((r) => r.emoji));
       return Array.from(emojis);
     },
-    
+
     filteredReactors() {
-      if (this.selectedTab === 'all') {
+      if (this.selectedTab === "all") {
         return this.reactions;
       }
-      return this.reactions.filter(r => r.emoji === this.selectedTab);
-    }
+      return this.reactions.filter((r) => r.emoji === this.selectedTab);
+    },
   },
   methods: {
     getEmojiCount(emoji) {
-      return this.reactions.filter(r => r.emoji === emoji).length;
+      return this.reactions.filter((r) => r.emoji === emoji).length;
     },
-    
+
     getUserAvatarUrl(avatar) {
-      if (!avatar) return '';
-      if (avatar.startsWith('http')) {
+      if (!avatar) return "";
+      if (avatar.startsWith("http")) {
         return avatar; // Google OAuth avatar
       }
-      return `http://localhost:3000/uploads/user/${avatar}`;
+      return this.$buildProfilePictureUrl(avatar);
     },
-    
+
     handleAvatarError(event) {
-      event.target.src = require('@/assets/defaultProfile.png');
-    }
+      event.target.src = require("@/assets/defaultProfile.png");
+    },
   },
   watch: {
     show(newVal) {
       if (newVal) {
-        this.selectedTab = 'all';
+        this.selectedTab = "all";
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -318,14 +318,14 @@ export default {
     width: 95%;
     max-height: 85vh;
   }
-  
+
   .modal-header,
   .modal-tabs,
   .modal-body {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  
+
   .reactor-item {
     padding: 0.5rem;
   }

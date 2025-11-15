@@ -6,7 +6,7 @@
           <img
             v-if="user.profilePicture"
             class="image-post__img"
-            :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+            :src="$buildProfilePictureUrl(user.profilePicture)"
           />
           <img
             v-else

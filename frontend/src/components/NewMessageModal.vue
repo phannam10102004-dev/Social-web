@@ -27,7 +27,7 @@
         >
           <img
             v-if="user.profilePicture"
-            :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+            :src="$buildProfilePictureUrl(user.profilePicture)"
             :alt="user.displayName"
           />
           <img v-else src="@/assets/defaultProfile.png" alt="Avatar" />
@@ -62,7 +62,7 @@
           >
             <img
               v-if="user.profilePicture"
-              :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+              :src="$buildProfilePictureUrl(user.profilePicture)"
               :alt="user.displayName"
               class="user-avatar"
             />
@@ -97,7 +97,7 @@
             >
               <img
                 v-if="user.profilePicture"
-                :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                :src="$buildProfilePictureUrl(user.profilePicture)"
                 :alt="user.displayName"
                 class="user-avatar"
               />

@@ -53,7 +53,7 @@ router.post("/upload", async (req, res) => {
       publicId: result.public_id,
     });
   } catch (err) {
-    console.error("Upload post image error:", err);
+    console.error("❌ Lỗi upload ảnh bài viết:", err);
     return res
       .status(500)
       .json({ error: "Upload failed", details: err.message });

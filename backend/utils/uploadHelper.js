@@ -20,7 +20,7 @@ const uploadToCloudinary = (file, folder = "uploads") => {
       },
       (error, result) => {
         if (error) {
-          console.error("Cloudinary upload error:", error);
+          console.error("❌ Lỗi upload lên Cloudinary:", error);
           reject(error);
         } else {
           resolve(result);

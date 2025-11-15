@@ -49,7 +49,7 @@
                 <div class="search-user-avatar">
                   <img
                     v-if="user.profilePicture"
-                    :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                    :src="$buildProfilePictureUrl(user.profilePicture)"
                     alt="User avatar"
                   />
                   <img
@@ -153,7 +153,7 @@
               <img
                 v-if="user.profilePicture"
                 class="user-avatar-img"
-                :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                :src="$buildProfilePictureUrl(user.profilePicture)"
                 :alt="user.displayName"
               />
               <img
@@ -173,7 +173,7 @@
                   <img
                     v-if="user.profilePicture"
                     class="dropdown-avatar"
-                    :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                    :src="$buildProfilePictureUrl(user.profilePicture)"
                   />
                   <img
                     v-else

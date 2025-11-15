@@ -2,24 +2,24 @@
   <div class="conversation-list-container">
     <!-- Tab Bar -->
     <div class="tab-bar">
-      <button 
-        class="tab-btn" 
+      <button
+        class="tab-btn"
         :class="{ active: activeTab === 'all' }"
         @click="switchTab('all')"
       >
         <i class="material-icons">forum</i>
         <span>Tất cả</span>
       </button>
-      <button 
-        class="tab-btn" 
+      <button
+        class="tab-btn"
         :class="{ active: activeTab === 'unread' }"
         @click="switchTab('unread')"
       >
         <i class="material-icons">mark_chat_unread</i>
         <span>Chưa đọc</span>
       </button>
-      <button 
-        class="tab-btn" 
+      <button
+        class="tab-btn"
         :class="{ active: activeTab === 'groups' }"
         @click="switchTab('groups')"
       >
@@ -32,68 +32,103 @@
     <div class="conversation-list" ref="conversationList">
       <!-- Loading Skeleton -->
       <template v-if="isLoading && conversations.length === 0">
-        <div class="conversation-skeleton" v-for="i in 6" :key="'skeleton-' + i">
+        <div
+          class="conversation-skeleton"
+          v-for="i in 6"
+          :key="'skeleton-' + i"
+        >
           <Skeletor circle width="50" height="50" />
           <div class="skeleton-details">
             <div class="skeleton-row">
               <Skeletor width="120" height="16" />
               <Skeletor width="40" height="12" />
             </div>
-            <Skeletor width="180" height="14" style="margin-top: 6px;" />
+            <Skeletor width="180" height="14" style="margin-top: 6px" />
           </div>
         </div>
       </template>
 
       <!-- Conversation Items -->
       <template v-else>
-        <div 
-          v-for="conversation in filteredConversations" 
-          :key="conversation && conversation._id ? conversation._id : Math.random()"
+        <div
+          v-for="conversation in filteredConversations"
+          :key="
+            conversation && conversation._id ? conversation._id : Math.random()
+          "
           class="conversation-item"
-          :class="{ 'active': conversation && activeConversationId === conversation._id }"
-          @click="conversation && conversation._id ? $emit('select-conversation', conversation._id) : null"
+          :class="{
+            active: conversation && activeConversationId === conversation._id,
+          }"
+          @click="
+            conversation && conversation._id
+              ? $emit('select-conversation', conversation._id)
+              : null
+          "
         >
           <div class="conversation-avatar">
             <!-- Group Chat Avatar - Icon nhóm -->
-            <div v-if="conversation && conversation.isGroup" class="group-avatar-icon">
+            <div
+              v-if="conversation && conversation.isGroup"
+              class="group-avatar-icon"
+            >
               <i class="material-icons">groups</i>
             </div>
-            
+
             <!-- 1-1 Chat Avatar -->
             <template v-else>
-              <img 
+              <img
                 v-if="conversation && conversation.recipientAvatar"
-                :src="getAvatarUrl(conversation.recipientAvatar)" 
+                :src="getAvatarUrl(conversation.recipientAvatar)"
                 alt="Avatar"
                 @error="onAvatarError"
               />
-              <img 
+              <img
                 v-else
-                src="@/assets/defaultProfile.png" 
+                src="@/assets/defaultProfile.png"
                 alt="Default Avatar"
               />
             </template>
-            
-            <span v-if="conversation && conversation.unread > 0" class="unread-badge">
+
+            <span
+              v-if="conversation && conversation.unread > 0"
+              class="unread-badge"
+            >
               {{ conversation.unread }}
             </span>
           </div>
           <div class="conversation-details">
             <div class="conversation-info">
-              <span class="conversation-name" :class="{ 'unread': conversation && conversation.unread > 0 }">{{ conversation && conversation.recipientName || 'Unknown' }}</span>
-              <span class="conversation-time" :class="{ 'unread': conversation && conversation.unread > 0 }">{{ conversation && conversation.lastMessageTime ? formatTime(conversation.lastMessageTime) : '' }}</span>
+              <span
+                class="conversation-name"
+                :class="{ unread: conversation && conversation.unread > 0 }"
+                >{{
+                  (conversation && conversation.recipientName) || "Unknown"
+                }}</span
+              >
+              <span
+                class="conversation-time"
+                :class="{ unread: conversation && conversation.unread > 0 }"
+                >{{
+                  conversation && conversation.lastMessageTime
+                    ? formatTime(conversation.lastMessageTime)
+                    : ""
+                }}</span
+              >
             </div>
-            <div class="conversation-message" :class="{ 'unread': conversation && conversation.unread > 0 }">
+            <div
+              class="conversation-message"
+              :class="{ unread: conversation && conversation.unread > 0 }"
+            >
               {{ getLastMessagePreview(conversation) }}
             </div>
           </div>
         </div>
-        
+
         <!-- Empty State -->
         <div v-if="filteredConversations.length === 0" class="no-conversations">
           {{ getEmptyMessage() }}
         </div>
-        
+
         <!-- Loading More Indicator -->
         <div v-if="isLoadingMore" class="loading-more">
           <div class="loading-spinner"></div>
@@ -105,40 +140,40 @@
 </template>
 
 <script>
-import { Skeletor } from 'vue-skeletor';
+import { Skeletor } from "vue-skeletor";
 
 export default {
-  name: 'ConversationList',
+  name: "ConversationList",
   components: { Skeletor },
   props: {
     conversations: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     activeConversationId: {
       type: String,
-      default: null
+      default: null,
     },
     isLoading: {
       type: Boolean,
-      default: false
+      default: false,
     },
     isLoadingMore: {
       type: Boolean,
-      default: false
+      default: false,
     },
     hasMore: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   },
   data() {
     return {
-      activeTab: 'all' // 'all', 'unread', 'groups'
+      activeTab: "all", // 'all', 'unread', 'groups'
     };
   },
   mounted() {
-    console.log('🔵 ConversationList mounted');
+    console.log("🔵 ConversationList mounted");
     this.setupScrollListener();
   },
   watch: {
@@ -147,143 +182,152 @@ export default {
       this.$nextTick(() => {
         this.setupScrollListener();
       });
-    }
+    },
   },
   beforeUnmount() {
     const container = this.$refs.conversationList;
     if (container) {
-      container.removeEventListener('scroll', this.handleScroll);
+      container.removeEventListener("scroll", this.handleScroll);
     }
   },
   computed: {
     filteredConversations() {
       let result = this.conversations;
-      
-      if (this.activeTab === 'unread') {
-        result = result.filter(conv => conv && conv.unread > 0);
-      } else if (this.activeTab === 'groups') {
-        result = result.filter(conv => conv && conv.isGroup);
+
+      if (this.activeTab === "unread") {
+        result = result.filter((conv) => conv && conv.unread > 0);
+      } else if (this.activeTab === "groups") {
+        result = result.filter((conv) => conv && conv.isGroup);
       }
-      
+
       return result;
-    }
+    },
   },
   methods: {
     setupScrollListener() {
       setTimeout(() => {
         const container = this.$refs.conversationList;
-        console.log('🔍 Looking for conversationList ref:', container);
-        
+        console.log("🔍 Looking for conversationList ref:", container);
+
         if (container) {
-          console.log('📦 Container info:', {
+          console.log("📦 Container info:", {
             scrollHeight: container.scrollHeight,
             clientHeight: container.clientHeight,
             canScroll: container.scrollHeight > container.clientHeight,
           });
-          
+
           // Remove old listener nếu có
-          container.removeEventListener('scroll', this.handleScroll);
+          container.removeEventListener("scroll", this.handleScroll);
           // Thêm scroll listener mới
-          container.addEventListener('scroll', this.handleScroll);
-          console.log('✅ Scroll listener attached to ConversationList');
+          container.addEventListener("scroll", this.handleScroll);
+          console.log("✅ Scroll listener attached to ConversationList");
         } else {
-          console.error('❌ conversationList ref not found!');
+          console.error("❌ conversationList ref not found!");
         }
       }, 500);
     },
     getAvatarUrl(avatarPath) {
-      if (!avatarPath) return '';
-      if (typeof avatarPath === 'string' && avatarPath.startsWith('http')) {
+      if (!avatarPath) return "";
+      if (typeof avatarPath === "string" && avatarPath.startsWith("http")) {
         return avatarPath; // Google OAuth or external
       }
-      return `http://localhost:3000/uploads/user/${avatarPath}`;
+      return this.$buildProfilePictureUrl(avatarPath);
     },
     onAvatarError(event) {
-      event.target.src = require('@/assets/defaultProfile.png');
+      event.target.src = require("@/assets/defaultProfile.png");
     },
     switchTab(tab) {
       this.activeTab = tab;
     },
-    
+
     getEmptyMessage() {
-      if (this.activeTab === 'unread') {
-        return 'Không có tin nhắn chưa đọc';
-      } else if (this.activeTab === 'groups') {
-        return 'Không có nhóm chat nào';
+      if (this.activeTab === "unread") {
+        return "Không có tin nhắn chưa đọc";
+      } else if (this.activeTab === "groups") {
+        return "Không có nhóm chat nào";
       }
-      return 'Không có cuộc trò chuyện nào';
+      return "Không có cuộc trò chuyện nào";
     },
-    
+
     formatTime(time) {
-      if (!time) return '';
-      
+      if (!time) return "";
+
       const date = new Date(time);
       const now = new Date();
       const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays === 0) {
         // Today: show time
-        return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
       } else if (diffDays < 7) {
         // Within a week: show day name
-        return date.toLocaleDateString('vi-VN', { weekday: 'short' });
+        return date.toLocaleDateString("vi-VN", { weekday: "short" });
       } else {
         // Older: show date
-        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+        return date.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+        });
       }
     },
     truncateMessage(message) {
-      if (!message) return '';
-      if (typeof message !== 'string') return '';
-      return message.length > 30 ? message.substring(0, 30) + '...' : message;
+      if (!message) return "";
+      if (typeof message !== "string") return "";
+      return message.length > 30 ? message.substring(0, 30) + "..." : message;
     },
 
     getLastMessagePreview(conversation) {
-      if (!conversation) return '';
+      if (!conversation) return "";
       const message = conversation.lastMessage;
-      if (!message) return '';
+      if (!message) return "";
 
       // Old format: string
-      if (typeof message === 'string') {
+      if (typeof message === "string") {
         return this.truncateMessage(message);
       }
 
       // New format: object
-      if (message.messageType === 'image') {
-        return '📷 Đã gửi một ảnh';
+      if (message.messageType === "image") {
+        return "📷 Đã gửi một ảnh";
       }
 
-      if (message.messageType === 'file') {
-        const fileName = message.originalFileName || message.fileName || message.file || '';
-        return fileName ? `📎 ${fileName}` : '📎 Đã gửi một file';
+      if (message.messageType === "file") {
+        const fileName =
+          message.originalFileName || message.fileName || message.file || "";
+        return fileName ? `📎 ${fileName}` : "📎 Đã gửi một file";
       }
 
       if (message.content) {
-        return message.content.length > 30 ? message.content.substring(0, 30) + '...' : message.content;
+        return message.content.length > 30
+          ? message.content.substring(0, 30) + "..."
+          : message.content;
       }
 
-      return '';
+      return "";
     },
-    
+
     handleScroll(event) {
       const container = event.target;
       const scrollTop = container.scrollTop;
       const scrollHeight = container.scrollHeight;
       const clientHeight = container.clientHeight;
-      
+
       // Khi scroll gần đến cuối (còn 100px)
       if (scrollTop + clientHeight >= scrollHeight - 100) {
         if (!this.isLoadingMore && this.hasMore) {
-          console.log('🔄 Loading more conversations...', {
+          console.log("🔄 Loading more conversations...", {
             isLoadingMore: this.isLoadingMore,
             hasMore: this.hasMore,
-            currentCount: this.conversations.length
+            currentCount: this.conversations.length,
           });
-          this.$emit('load-more');
+          this.$emit("load-more");
         }
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -348,21 +392,25 @@ export default {
 .conversation-list {
   flex: 1;
   overflow-y: auto;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%);
-  
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(250, 250, 250, 0.95) 100%
+  );
+
   &::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 3px;
   }
-  
+
   &::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #5568d3 0%, #63428b 100%);
   }
@@ -376,9 +424,9 @@ export default {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border-bottom: 1px solid rgba(226, 232, 240, 0.4);
   position: relative;
-  
+
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 0;
     top: 0;
@@ -388,19 +436,27 @@ export default {
     transform: scaleY(0);
     transition: transform 0.2s ease;
   }
-  
+
   &:hover {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(102, 126, 234, 0.05) 0%,
+      rgba(118, 75, 162, 0.05) 100%
+    );
     transform: translateX(4px);
   }
-  
+
   &.active {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
-    
+    background: linear-gradient(
+      135deg,
+      rgba(102, 126, 234, 0.08) 0%,
+      rgba(118, 75, 162, 0.08) 100%
+    );
+
     &::before {
       transform: scaleY(1);
     }
-    
+
     .conversation-name {
       color: #667eea;
       font-weight: 700;
@@ -417,19 +473,19 @@ export default {
   flex-shrink: 0;
   border: 2px solid rgba(102, 126, 234, 0.15);
   transition: all 0.2s ease;
-  
+
   img {
     width: 100%;
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
   }
-  
+
   .conversation-item:hover & {
     border-color: rgba(102, 126, 234, 0.35);
     transform: scale(1.05);
   }
-  
+
   .unread-badge {
     position: absolute;
     bottom: -2px;
@@ -459,18 +515,19 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   .material-icons {
     color: white;
     font-size: 28px;
   }
-  
+
   .conversation-item:hover & {
     background: linear-gradient(135deg, #5568d3 0%, #63428b 100%);
   }
 }
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -498,7 +555,7 @@ export default {
   text-overflow: ellipsis;
   color: #1e293b;
   transition: color 0.2s ease;
-  
+
   &.unread {
     font-weight: 700;
     color: #667eea;
@@ -511,7 +568,7 @@ export default {
   flex-shrink: 0;
   margin-left: 8px;
   font-weight: 500;
-  
+
   &.unread {
     font-weight: 700;
     color: #667eea;
@@ -525,7 +582,7 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
-  
+
   &.unread {
     color: #475569;
     font-weight: 600;
@@ -540,7 +597,11 @@ export default {
   color: #94a3b8;
   font-size: 0.9375rem;
   font-weight: 500;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(250, 250, 250, 0.95) 100%
+  );
 }
 
 .conversation-skeleton {
@@ -584,7 +645,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-more span {
@@ -598,23 +661,23 @@ export default {
   .conversation-item {
     padding: 0.75rem 1rem;
   }
-  
+
   .conversation-avatar {
     width: 48px;
     height: 48px;
     margin-right: 12px;
-    
+
     .unread-badge {
       min-width: 18px;
       height: 18px;
       font-size: 0.625rem;
     }
   }
-  
+
   .conversation-name {
     font-size: 0.875rem;
   }
-  
+
   .conversation-message {
     font-size: 0.8125rem;
   }

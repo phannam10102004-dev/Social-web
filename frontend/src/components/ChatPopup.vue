@@ -14,7 +14,9 @@
         <template v-else>
           <img
             v-if="conversation?.participant?.profilePicture"
-            :src="`http://localhost:3000/uploads/user/${conversation.participant.profilePicture}`"
+            :src="
+              $buildProfilePictureUrl(conversation.participant.profilePicture)
+            "
             alt="Avatar"
             class="chat-avatar"
           />
@@ -110,7 +112,7 @@
           >
             <img
               v-if="!isOwnMessage(message) && message.sender.profilePicture"
-              :src="`http://localhost:3000/uploads/user/${message.sender.profilePicture}`"
+              :src="$buildProfilePictureUrl(message.sender.profilePicture)"
               class="message-avatar"
             />
             <img
@@ -142,10 +144,7 @@
                   v-if="message.messageType === 'image'"
                   class="message-image"
                 >
-                  <img
-                    :src="`http://localhost:3000/uploads/${message.file}`"
-                    alt="Image"
-                  />
+                  <img :src="$buildAssetUrl(message.file)" alt="Image" />
                 </div>
                 <div
                   v-else-if="message.messageType === 'file'"

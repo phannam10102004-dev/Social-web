@@ -147,7 +147,7 @@ export default {
     },
     getProfilePicture(user) {
       return user.profilePicture
-        ? this.$buildAssetUrl("uploads/user/" + user.profilePicture)
+        ? this.$buildProfilePictureUrl(user.profilePicture)
         : "https://via.placeholder.com/40";
     },
     getReactionEmoji(reactionType) {

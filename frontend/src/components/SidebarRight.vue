@@ -3,16 +3,16 @@
     <div class="friends" ref="friendsContainer">
       <!-- Tab Bar -->
       <div class="tab-bar">
-        <button 
-          class="tab-btn" 
+        <button
+          class="tab-btn"
           :class="{ active: activeTab === 'contacts' }"
           @click="switchTab('contacts')"
         >
           <i class="material-icons">people</i>
           <span>Người liên hệ</span>
         </button>
-        <button 
-          class="tab-btn" 
+        <button
+          class="tab-btn"
           :class="{ active: activeTab === 'followers' }"
           @click="switchTab('followers')"
         >
@@ -24,15 +24,19 @@
       <!-- Search Box -->
       <div class="search-box">
         <i class="material-icons search-icon">search</i>
-        <input 
-          type="text" 
-          v-model="searchQuery" 
-          :placeholder="activeTab === 'contacts' ? 'Tìm kiếm liên hệ' : 'Tìm kiếm người theo dõi'"
+        <input
+          type="text"
+          v-model="searchQuery"
+          :placeholder="
+            activeTab === 'contacts'
+              ? 'Tìm kiếm liên hệ'
+              : 'Tìm kiếm người theo dõi'
+          "
           @input="handleSearch"
         />
-        <i 
-          v-if="searchQuery" 
-          class="material-icons clear-icon" 
+        <i
+          v-if="searchQuery"
+          class="material-icons clear-icon"
           @click="clearSearch"
         >
           close
@@ -45,24 +49,37 @@
           <Skeletor circle width="50" height="50" />
           <div class="skeleton-text">
             <Skeletor width="120" height="14" />
-            <Skeletor width="80" height="10" style="margin-top: 4px;" />
+            <Skeletor width="80" height="10" style="margin-top: 4px" />
           </div>
         </div>
       </div>
-      
+
       <!-- Users list -->
       <div v-else class="users-list">
-        <div class="friend" v-for="user in filteredUsers" :key="user._id" @click="openChat(user)">
+        <div
+          class="friend"
+          v-for="user in filteredUsers"
+          :key="user._id"
+          @click="openChat(user)"
+        >
           <div class="friend-info">
             <div class="avatar-wrapper">
-              <img v-if="user.profilePicture" class="image-post__img" :src="`http://localhost:3000/uploads/user/${user.profilePicture}`" />
-              <img v-else class="image-post__img" src="@/assets/defaultProfile.png" />
+              <img
+                v-if="user.profilePicture"
+                class="image-post__img"
+                :src="$buildProfilePictureUrl(user.profilePicture)"
+              />
+              <img
+                v-else
+                class="image-post__img"
+                src="@/assets/defaultProfile.png"
+              />
               <span v-if="user.isOnline" class="online-dot"></span>
             </div>
             <label>{{ user.displayName || user.email }}</label>
           </div>
         </div>
-        
+
         <!-- Loading more indicator -->
         <div v-if="isLoadingMore" class="loading-more">
           <div class="friend-skeleton" v-for="i in 3" :key="'loading-' + i">
@@ -72,20 +89,35 @@
             </div>
           </div>
         </div>
-        
+
         <!-- No more users -->
         <div v-if="!hasMore && users.length > 0" class="no-more">
-          <span>Đã hiển thị tất cả {{ activeTab === 'contacts' ? 'liên hệ' : 'người đang theo dõi' }}</span>
+          <span
+            >Đã hiển thị tất cả
+            {{
+              activeTab === "contacts" ? "liên hệ" : "người đang theo dõi"
+            }}</span
+          >
         </div>
 
         <!-- Empty state -->
-        <div v-if="!isLoading && filteredUsers.length === 0 && !searchQuery" class="empty-state">
-          <i class="material-icons">{{ activeTab === 'contacts' ? 'contacts' : 'person_search' }}</i>
-          <span>{{ activeTab === 'contacts' ? 'Chưa có liên hệ' : 'Chưa theo dõi ai' }}</span>
+        <div
+          v-if="!isLoading && filteredUsers.length === 0 && !searchQuery"
+          class="empty-state"
+        >
+          <i class="material-icons">{{
+            activeTab === "contacts" ? "contacts" : "person_search"
+          }}</i>
+          <span>{{
+            activeTab === "contacts" ? "Chưa có liên hệ" : "Chưa theo dõi ai"
+          }}</span>
         </div>
 
         <!-- No search results -->
-        <div v-if="!isLoading && searchQuery && filteredUsers.length === 0" class="empty-state">
+        <div
+          v-if="!isLoading && searchQuery && filteredUsers.length === 0"
+          class="empty-state"
+        >
           <i class="material-icons">search_off</i>
           <span>Không tìm thấy kết quả</span>
         </div>
@@ -95,17 +127,17 @@
 </template>
 
 <script>
-import { Skeletor } from 'vue-skeletor';
+import { Skeletor } from "vue-skeletor";
 
 export default {
-  name: 'SidebarRight',
+  name: "SidebarRight",
   components: { Skeletor },
   data() {
     return {
-      activeTab: 'contacts', // 'contacts' hoặc 'followers'
+      activeTab: "contacts", // 'contacts' hoặc 'followers'
       users: [],
       allUsers: [], // Lưu tất cả users để filter
-      searchQuery: '',
+      searchQuery: "",
       isLoading: false,
       isLoadingMore: false,
       page: 0,
@@ -114,12 +146,12 @@ export default {
     };
   },
   async created() {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) return;
     await this.loadUsers();
   },
   mounted() {
-    console.log('🔵 SidebarRight mounted');
+    console.log("🔵 SidebarRight mounted");
     this.setupScrollListener();
   },
   watch: {
@@ -128,153 +160,163 @@ export default {
       this.$nextTick(() => {
         this.setupScrollListener();
       });
-    }
+    },
   },
   computed: {
     filteredUsers() {
       if (!this.searchQuery.trim()) {
         return this.users;
       }
-      
+
       const query = this.searchQuery.toLowerCase().trim();
-      return this.allUsers.filter(user => {
-        const name = (user.displayName || '').toLowerCase();
-        const email = (user.email || '').toLowerCase();
+      return this.allUsers.filter((user) => {
+        const name = (user.displayName || "").toLowerCase();
+        const email = (user.email || "").toLowerCase();
         return name.includes(query) || email.includes(query);
       });
-    }
+    },
   },
   beforeUnmount() {
     const container = this.$refs.friendsContainer;
     if (container) {
-      container.removeEventListener('scroll', this.handleScroll);
+      container.removeEventListener("scroll", this.handleScroll);
     }
   },
   methods: {
     handleSearch() {
       // Filter được xử lý bởi computed property filteredUsers
     },
-    
+
     clearSearch() {
-      this.searchQuery = '';
+      this.searchQuery = "";
     },
-    
+
     switchTab(tab) {
       if (this.activeTab === tab) return;
-      
+
       console.log(`🔄 Switching to tab: ${tab}`);
       this.activeTab = tab;
-      
+
       // Reset state
       this.users = [];
       this.allUsers = [];
-      this.searchQuery = '';
+      this.searchQuery = "";
       this.page = 0;
       this.hasMore = true;
-      
+
       // Load data for new tab
       this.loadUsers();
     },
-    
+
     setupScrollListener() {
       setTimeout(() => {
         const container = this.$refs.friendsContainer;
-        console.log('🔍 Looking for container ref:', container);
-        
+        console.log("🔍 Looking for container ref:", container);
+
         if (container) {
-          console.log('📦 Container info:', {
+          console.log("📦 Container info:", {
             scrollHeight: container.scrollHeight,
             clientHeight: container.clientHeight,
             canScroll: container.scrollHeight > container.clientHeight,
           });
-          
+
           // Remove old listener nếu có
-          container.removeEventListener('scroll', this.handleScroll);
+          container.removeEventListener("scroll", this.handleScroll);
           // Thêm scroll listener mới
-          container.addEventListener('scroll', this.handleScroll);
-          console.log('✅ Scroll listener attached');
+          container.addEventListener("scroll", this.handleScroll);
+          console.log("✅ Scroll listener attached");
         } else {
-          console.error('❌ friendsContainer ref not found!');
+          console.error("❌ friendsContainer ref not found!");
         }
       }, 500);
     },
-    
+
     async loadUsers() {
       if (this.isLoading || this.isLoadingMore || !this.hasMore) {
-        console.log('⏭️ Skip loading:', { isLoading: this.isLoading, isLoadingMore: this.isLoadingMore, hasMore: this.hasMore });
+        console.log("⏭️ Skip loading:", {
+          isLoading: this.isLoading,
+          isLoadingMore: this.isLoadingMore,
+          hasMore: this.hasMore,
+        });
         return;
       }
-      
+
       this.isLoading = this.page === 0;
       this.isLoadingMore = this.page > 0;
-      
+
       console.log(`🔄 Loading page ${this.page} for tab ${this.activeTab}...`);
-      
+
       try {
-        await this.$store.dispatch('loadUser');
-        
+        await this.$store.dispatch("loadUser");
+
         let response;
-        if (this.activeTab === 'contacts') {
-          const { getSuggestedContacts } = await import('@/api/users');
-          response = await getSuggestedContacts(this.limit, this.page * this.limit);
+        if (this.activeTab === "contacts") {
+          const { getSuggestedContacts } = await import("@/api/users");
+          response = await getSuggestedContacts(
+            this.limit,
+            this.page * this.limit
+          );
         } else {
-          const { getRecentFollowers } = await import('@/api/users');
-          response = await getRecentFollowers(this.limit, this.page * this.limit);
+          const { getRecentFollowers } = await import("@/api/users");
+          response = await getRecentFollowers(
+            this.limit,
+            this.page * this.limit
+          );
         }
-        
+
         const newUsers = response.data.users || [];
-        
+
         console.log(`✅ Got ${newUsers.length} users from API`);
-        
+
         if (newUsers.length < this.limit) {
           this.hasMore = false;
-          console.log('📭 No more users available');
+          console.log("📭 No more users available");
         }
-        
+
         this.users = [...this.users, ...newUsers];
         this.allUsers = [...this.allUsers, ...newUsers]; // Lưu vào allUsers để search
         this.page++;
-        
-        console.log('✅ Total users loaded:', this.users.length);
+
+        console.log("✅ Total users loaded:", this.users.length);
       } catch (error) {
-        console.error('❌ Load users error:', error);
+        console.error("❌ Load users error:", error);
       } finally {
         this.isLoading = false;
         this.isLoadingMore = false;
       }
     },
-    
+
     handleScroll(event) {
       const container = event.target;
       const scrollTop = container.scrollTop;
       const scrollHeight = container.scrollHeight;
       const clientHeight = container.clientHeight;
-      
-      console.log('📜 Scroll detected:', {
+
+      console.log("📜 Scroll detected:", {
         scrollTop,
         scrollHeight,
         clientHeight,
-        remaining: scrollHeight - (scrollTop + clientHeight)
+        remaining: scrollHeight - (scrollTop + clientHeight),
       });
-      
+
       // Khi scroll gần đến cuối (còn 100px)
       if (scrollTop + clientHeight >= scrollHeight - 100) {
-        console.log('🔄 Loading more users...');
+        console.log("🔄 Loading more users...");
         this.loadUsers();
       }
     },
-    
+
     openChat(user) {
       // Gọi global method để mở ChatPopup
       if (window.openChatPopup) {
         window.openChatPopup({
           recipientId: user._id,
           recipientName: user.displayName || user.email,
-          recipientAvatar: user.profilePicture
+          recipientAvatar: user.profilePicture,
         });
       }
-    }
-  }
+    },
+  },
 };
 </script>
 

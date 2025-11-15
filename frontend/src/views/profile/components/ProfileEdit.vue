@@ -28,7 +28,7 @@
               />
               <img
                 v-else-if="user.profilePicture"
-                :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+                :src="$buildProfilePictureUrl(user.profilePicture)"
                 class="pe-avatar"
                 alt="Current avatar"
                 @error="handleImageError"
@@ -274,6 +274,25 @@ export default {
         try {
           const axios = (await import("@/utils/axios")).default;
 
+          // Upload ảnh lên Cloudinary TRƯỚC (nếu có file mới)
+          let cloudinaryUrl = null;
+          if (this.file) {
+            const uploadResponse = await axios.post("/auth/upload", formData, {
+              withCredentials: true,
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+
+            if (uploadResponse.data && uploadResponse.data.file) {
+              cloudinaryUrl = uploadResponse.data.file;
+              console.log(
+                "✅ Upload thành công, Cloudinary URL:",
+                cloudinaryUrl
+              );
+            } else {
+              console.error("❌ Upload không trả về URL");
+            }
+          }
+
           // Chuẩn bị dữ liệu để cập nhật
           const updateData = {
             displayName: this.displayName,
@@ -282,12 +301,15 @@ export default {
             hobbies: this.hobbies,
           };
 
-          // Chỉ thêm profilePicture nếu có file mới
-          if (this.file) {
-            updateData.profilePicture = this.file.name;
-            console.log("Updating with new profile picture:", this.file.name);
-          } else {
-            console.log("No new profile picture, keeping existing avatar");
+          // Cập nhật profilePicture với Cloudinary URL (nếu có)
+          if (cloudinaryUrl) {
+            updateData.profilePicture = cloudinaryUrl;
+            console.log(
+              "📸 Cập nhật profilePicture với Cloudinary URL:",
+              cloudinaryUrl
+            );
+          } else if (!this.file) {
+            console.log("Không có ảnh mới, giữ nguyên avatar cũ");
           }
 
           const responseUser = await axios.put(
@@ -299,14 +321,6 @@ export default {
           );
 
           if (responseUser.status === 200) {
-            // Chỉ upload file nếu có file mới
-            if (this.file) {
-              await axios.post("/auth/upload", formData, {
-                withCredentials: true,
-                headers: { "Content-Type": "multipart/form-data" },
-              });
-            }
-
             const getUser = await axios.get(`/users/${currentUserId}`, {
               withCredentials: true,
             });

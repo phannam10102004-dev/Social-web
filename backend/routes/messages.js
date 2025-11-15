@@ -152,7 +152,7 @@ router.get(
         currentPage: page,
       });
     } catch (error) {
-      console.error("Get messages error:", error);
+      console.error("❌ Lỗi lấy tin nhắn:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -330,7 +330,7 @@ router.post(
 
       res.status(201).json(newMessage);
     } catch (error) {
-      console.error("Send message error:", error);
+      console.error("❌ Lỗi gửi tin nhắn:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -740,12 +740,10 @@ router.post("/groups/:conversationId/leave", verifyToken, async (req, res) => {
 
     // Creator không thể rời nhóm
     if (userId === conversation.createdBy.toString()) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Group creator cannot leave the group. Please transfer ownership first.",
-        });
+      return res.status(400).json({
+        error:
+          "Group creator cannot leave the group. Please transfer ownership first.",
+      });
     }
 
     // Xóa user khỏi participants và admins
@@ -1054,7 +1052,7 @@ router.get("/download/:filename", verifyToken, async (req, res) => {
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
   } catch (error) {
-    console.error("Error downloading file:", error);
+    console.error("❌ Lỗi tải file:", error);
     res.status(500).json({ error: "Error downloading file" });
   }
 });
@@ -1117,7 +1115,7 @@ router.put("/messages/:messageId", verifyToken, async (req, res) => {
 
     res.json(message);
   } catch (error) {
-    console.error("Edit message error:", error);
+    console.error("❌ Lỗi sửa tin nhắn:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -1158,7 +1156,7 @@ router.delete("/messages/:messageId", verifyToken, async (req, res) => {
 
     res.json({ message: "Message deleted successfully" });
   } catch (error) {
-    console.error("Delete message error:", error);
+    console.error("❌ Lỗi xóa tin nhắn:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

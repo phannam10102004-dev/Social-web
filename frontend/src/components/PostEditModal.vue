@@ -185,7 +185,7 @@ export default {
         return URL.createObjectURL(this.newImageFile);
       }
       if (this.editedImageUrl) {
-        return this.$buildAssetUrl("uploads/" + this.editedImageUrl);
+        return this.$buildAssetUrl(this.editedImageUrl);
       }
       return "";
     },
@@ -319,10 +319,11 @@ export default {
       formData.append("file", file);
 
       try {
-        // You'll need to implement this API call
+        // Upload to Cloudinary
         const response = await fetch(`${API_BASE_URL}/posts/upload`, {
           method: "POST",
           body: formData,
+          credentials: "include",
         });
 
         if (!response.ok) {
@@ -330,9 +331,13 @@ export default {
         }
 
         const data = await response.json();
-        return file.name; // Return the filename
+        // Return Cloudinary URL instead of filename
+        if (data.file) {
+          return data.file; // Cloudinary URL
+        }
+        throw new Error("No file URL returned");
       } catch (error) {
-        console.error("Upload error:", error);
+        console.error("❌ Lỗi upload ảnh:", error);
         throw new Error("Không thể tải lên ảnh. Vui lòng thử lại.");
       }
     },

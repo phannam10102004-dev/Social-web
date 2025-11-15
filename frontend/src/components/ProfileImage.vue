@@ -7,7 +7,7 @@
     <img
       v-if="profilePicture"
       class="image-post__avatar"
-      :src="$buildAssetUrl('uploads/user/' + profilePicture)"
+      :src="$buildProfilePictureUrl(profilePicture)"
       :key="`avatar-${id}-${profilePicture}`"
     />
     <img
@@ -21,7 +21,7 @@
     <img
       v-if="profilePicture"
       class="image-post__avatar"
-      :src="$buildAssetUrl('uploads/user/' + profilePicture)"
+      :src="$buildProfilePictureUrl(profilePicture)"
       :key="`avatar-${id}-${profilePicture}`"
     />
     <img

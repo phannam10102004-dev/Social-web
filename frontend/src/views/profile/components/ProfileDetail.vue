@@ -5,15 +5,23 @@
         <Skeletor circle width="120" height="120" />
         <div class="skeleton-info">
           <Skeletor width="200" height="24" />
-          <Skeletor width="150" height="16" style="margin-top: 8px;" />
+          <Skeletor width="150" height="16" style="margin-top: 8px" />
           <div class="skeleton-stats">
             <Skeletor width="100" height="14" />
             <Skeletor width="100" height="14" />
           </div>
-          <Skeletor width="120" height="36" style="margin-top: 12px; border-radius: 8px;" />
+          <Skeletor
+            width="120"
+            height="36"
+            style="margin-top: 12px; border-radius: 8px"
+          />
         </div>
       </div>
-      <Skeletor width="100%" height="80" style="margin-top: 20px; border-radius: 8px;" />
+      <Skeletor
+        width="100%"
+        height="80"
+        style="margin-top: 20px; border-radius: 8px"
+      />
     </div>
     <div class="profile-all" v-else>
       <div class="profile-info">
@@ -21,7 +29,7 @@
           <img
             class="image-post__img"
             v-if="user.profilePicture"
-            :src="$buildAssetUrl('uploads/user/' + user.profilePicture)"
+            :src="$buildProfilePictureUrl(user.profilePicture)"
           />
           <img
             v-else

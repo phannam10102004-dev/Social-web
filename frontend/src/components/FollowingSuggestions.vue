@@ -8,16 +8,18 @@
       <div class="header-controls">
         <span class="suggestions-count">{{ allUsers.length }} người</span>
         <div class="pagination-controls" v-if="allUsers.length > itemsPerPage">
-          <button 
-            class="nav-btn" 
+          <button
+            class="nav-btn"
             :class="{ disabled: !canGoPrevious }"
             @click="previousPage"
             :disabled="!canGoPrevious"
           >
             <i class="material-icons">chevron_left</i>
           </button>
-          <span class="page-indicator">{{ currentPage + 1 }}/{{ totalPages }}</span>
-          <button 
+          <span class="page-indicator"
+            >{{ currentPage + 1 }}/{{ totalPages }}</span
+          >
+          <button
             class="nav-btn"
             :class="{ disabled: !canGoNext }"
             @click="nextPage"
@@ -29,23 +31,26 @@
       </div>
     </div>
 
-    <div class="suggestions-container" v-if="!loading && displayUsers.length > 0">
+    <div
+      class="suggestions-container"
+      v-if="!loading && displayUsers.length > 0"
+    >
       <div class="suggestions-scroll">
-        <div 
-          v-for="user in displayUsers" 
+        <div
+          v-for="user in displayUsers"
           :key="user._id"
           class="suggestion-card"
         >
           <div class="card-content" @click="goToProfile(user._id)">
             <div class="user-avatar-wrapper">
-              <img 
-                v-if="user.profilePicture" 
-                :src="`http://localhost:3000/uploads/user/${user.profilePicture}`"
+              <img
+                v-if="user.profilePicture"
+                :src="$buildProfilePictureUrl(user.profilePicture)"
                 :alt="user.displayName"
                 class="user-avatar"
               />
-              <img 
-                v-else 
+              <img
+                v-else
                 src="@/assets/defaultProfile.png"
                 :alt="user.displayName"
                 class="user-avatar"
@@ -54,30 +59,40 @@
                 <i class="material-icons">check</i>
               </span>
             </div>
-            
+
             <div class="user-info">
               <h4 class="user-name">{{ user.displayName || user.email }}</h4>
-              <span class="user-badge" :class="{ 'following': user.isFollowing, 'requested': user.requestSent }">
-                {{ user.isFollowing ? 'Đang theo dõi' : (user.requestSent ? 'Đã gửi yêu cầu' : 'Gợi ý') }}
+              <span
+                class="user-badge"
+                :class="{
+                  following: user.isFollowing,
+                  requested: user.requestSent,
+                }"
+              >
+                {{
+                  user.isFollowing
+                    ? "Đang theo dõi"
+                    : user.requestSent
+                    ? "Đã gửi yêu cầu"
+                    : "Gợi ý"
+                }}
               </span>
             </div>
           </div>
-          
-          <button 
-            v-if="user.requestSent" 
-            class="requested-btn"
-            disabled
-          >
+
+          <button v-if="user.requestSent" class="requested-btn" disabled>
             <i class="material-icons">schedule</i>
             <span>Đã gửi yêu cầu</span>
           </button>
-          <button 
-            v-else-if="!user.isFollowing" 
+          <button
+            v-else-if="!user.isFollowing"
             class="follow-btn"
             @click.stop="followUser(user._id)"
             :disabled="user.isFollowLoading"
           >
-            <i class="material-icons">{{ user.isFollowLoading ? 'hourglass_empty' : 'person_add' }}</i>
+            <i class="material-icons">{{
+              user.isFollowLoading ? "hourglass_empty" : "person_add"
+            }}</i>
           </button>
           <div v-else class="following-badge-btn">
             <i class="material-icons">check</i>
@@ -90,9 +105,17 @@
     <div v-else-if="loading" class="suggestions-loading">
       <div class="loading-card" v-for="i in 5" :key="i">
         <Skeletor circle width="54" height="54" />
-        <Skeletor width="80" height="14" style="margin-top: 12px;" />
-        <Skeletor width="60" height="10" style="margin-top: 8px; border-radius: 10px;" />
-        <Skeletor width="100%" height="32" style="margin-top: 10px; border-radius: 8px;" />
+        <Skeletor width="80" height="14" style="margin-top: 12px" />
+        <Skeletor
+          width="60"
+          height="10"
+          style="margin-top: 8px; border-radius: 10px"
+        />
+        <Skeletor
+          width="100%"
+          height="32"
+          style="margin-top: 10px; border-radius: 8px"
+        />
       </div>
     </div>
 
@@ -104,11 +127,15 @@
 </template>
 
 <script>
-import { Skeletor } from 'vue-skeletor';
-import { getFollowingUsers, getSuggestedUsers, followUser as followUserApi } from '@/api/users';
+import { Skeletor } from "vue-skeletor";
+import {
+  getFollowingUsers,
+  getSuggestedUsers,
+  followUser as followUserApi,
+} from "@/api/users";
 
 export default {
-  name: 'FollowingSuggestions',
+  name: "FollowingSuggestions",
   components: { Skeletor },
   data() {
     return {
@@ -132,12 +159,12 @@ export default {
     },
     canGoNext() {
       return this.currentPage < this.totalPages - 1;
-    }
+    },
   },
   async mounted() {
-    console.log('FollowingSuggestions component mounted');
-    console.log('Current user from store:', this.$store.state.user);
-    console.log('Token from localStorage:', localStorage.getItem('token'));
+    console.log("FollowingSuggestions component mounted");
+    console.log("Current user from store:", this.$store.state.user);
+    console.log("Token from localStorage:", localStorage.getItem("token"));
     await this.loadUsers();
   },
   methods: {
@@ -146,70 +173,73 @@ export default {
       try {
         const [followingUsers, suggestedUsers] = await Promise.all([
           this.loadFollowingUsers(),
-          this.loadSuggestedUsers()
+          this.loadSuggestedUsers(),
         ]);
-        
+
         // Chỉ kết hợp suggested users (không cần following)
         // Hoặc nếu muốn ưu tiên following thì uncomment dòng dưới
         // this.allUsers = [...followingUsers, ...suggestedUsers].slice(0, 10);
-        
+
         // Chỉ hiển thị suggested users, giới hạn 10 người
         this.allUsers = suggestedUsers.slice(0, 10);
         this.currentPage = 0; // Reset về trang đầu
-        
-        console.log('Total users loaded:', this.allUsers.length);
+
+        console.log("Total users loaded:", this.allUsers.length);
       } catch (error) {
-        console.error('Load users error:', error);
+        console.error("Load users error:", error);
       } finally {
         this.loading = false;
       }
     },
-    
+
     async loadFollowingUsers() {
       try {
-        const token = localStorage.getItem('token');
-        console.log('Loading following users with token:', token ? 'exists' : 'missing');
-        
+        const token = localStorage.getItem("token");
+        console.log(
+          "Loading following users with token:",
+          token ? "exists" : "missing"
+        );
+
         const response = await getFollowingUsers();
-        
-        console.log('Following users response:', response.data);
-        const followingUsers = (response.data || []).map(user => ({
+
+        console.log("Following users response:", response.data);
+        const followingUsers = (response.data || []).map((user) => ({
           ...user,
           isFollowing: true,
-          isFollowLoading: false
+          isFollowLoading: false,
         }));
-        console.log('Following users loaded:', followingUsers.length);
+        console.log("Following users loaded:", followingUsers.length);
         return followingUsers;
       } catch (error) {
-        console.error('Load following users error:', error.response || error);
+        console.error("Load following users error:", error.response || error);
         return [];
       }
     },
-    
+
     async loadSuggestedUsers() {
       try {
         // Lấy 30 users để random chọn ra 10
         const response = await getSuggestedUsers(30);
-        
-        console.log('Suggested users response:', response.data);
-        const users = (response.data || []).map(user => ({
+
+        console.log("Suggested users response:", response.data);
+        const users = (response.data || []).map((user) => ({
           ...user,
           isFollowing: false,
           isFollowLoading: false,
-          requestSent: false // Thêm trạng thái requestSent
+          requestSent: false, // Thêm trạng thái requestSent
         }));
-        
+
         // Shuffle và chỉ lấy 10 người
         const shuffled = this.shuffleArray(users);
         const limited = shuffled.slice(0, 10);
-        console.log('Suggested users loaded:', limited.length);
+        console.log("Suggested users loaded:", limited.length);
         return limited;
       } catch (error) {
-        console.error('Load suggested users error:', error.response || error);
+        console.error("Load suggested users error:", error.response || error);
         return [];
       }
     },
-    
+
     shuffleArray(array) {
       const shuffled = [...array];
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -218,71 +248,71 @@ export default {
       }
       return shuffled;
     },
-    
+
     async followUser(userId) {
       try {
         const currentUserId = this.$store.state.user._id;
-        
+
         // Tìm user trong allUsers
-        const userIndex = this.allUsers.findIndex(u => u._id === userId);
+        const userIndex = this.allUsers.findIndex((u) => u._id === userId);
         if (userIndex === -1) return;
-        
+
         // Hiển thị loading ngay lập tức
         this.allUsers[userIndex].isFollowLoading = true;
-        
+
         // Gọi API follow (sử dụng endpoint từ profile)
         const response = await followUserApi(userId, currentUserId);
-        
+
         if (response.status === 200) {
           const data = response.data;
-          
+
           // Kiểm tra response để xác định trạng thái
           if (data.isPrivate && data.requestSent) {
             // Tài khoản private - đã gửi yêu cầu
             this.allUsers[userIndex].requestSent = true;
             this.allUsers[userIndex].isFollowing = false;
-            console.log('✉️ Đã gửi yêu cầu theo dõi!');
+            console.log("✉️ Đã gửi yêu cầu theo dõi!");
           } else {
             // Tài khoản public - follow thành công
             this.allUsers[userIndex].isFollowing = true;
             this.allUsers[userIndex].requestSent = false;
-            console.log('✅ Đã follow thành công!');
-            
+            console.log("✅ Đã follow thành công!");
+
             // Cập nhật store
-            await this.$store.dispatch('updateUserFollowing', {
-              action: 'follow',
-              targetUserId: userId
+            await this.$store.dispatch("updateUserFollowing", {
+              action: "follow",
+              targetUserId: userId,
             });
           }
-          
+
           this.allUsers[userIndex].isFollowLoading = false;
         }
       } catch (error) {
-        console.error('Follow user error:', error);
+        console.error("Follow user error:", error);
         // Nếu lỗi, reset lại loading state
-        const userIndex = this.allUsers.findIndex(u => u._id === userId);
+        const userIndex = this.allUsers.findIndex((u) => u._id === userId);
         if (userIndex !== -1) {
           this.allUsers[userIndex].isFollowLoading = false;
         }
       }
     },
-    
+
     goToProfile(userId) {
       this.$router.push(`/profile/${userId}`);
     },
-    
+
     nextPage() {
       if (this.canGoNext) {
         this.currentPage++;
       }
     },
-    
+
     previousPage() {
       if (this.canGoPrevious) {
         this.currentPage--;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -578,8 +608,12 @@ export default {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .suggestions-loading {
@@ -623,7 +657,7 @@ export default {
   .suggestions-scroll {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .suggestion-card {
     padding: 0.75rem;
   }
