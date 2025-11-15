@@ -10,7 +10,6 @@
         </div>
 
         <div class="modal-body">
-<<<<<<< HEAD
           <!-- User info section -->
           <div class="user-info">
             <ProfileImage :id="currentUser._id" class="user-avatar" />
@@ -18,39 +17,48 @@
               <span class="user-name">{{
                 currentUser.displayName || currentUser.email
               }}</span>
-            </div>
-=======
-        <!-- User info section -->
-        <div class="user-info">
-          <ProfileImage :id="currentUser._id" class="user-avatar" />
-          <div class="user-details">
-            <span class="user-name">{{ currentUser.displayName || currentUser.email }}</span>
-            <div class="privacy-selector" @click="togglePrivacy">
-              <i class="material-icons">{{ editedPrivacy === 'public' ? 'public' : 'lock' }}</i>
-              <span>{{ editedPrivacy === 'public' ? 'Công khai' : 'Chỉ mình tôi' }}</span>
-              <i class="material-icons arrow">arrow_drop_down</i>
+              <div class="privacy-selector" @click="togglePrivacy">
+                <i class="material-icons">{{
+                  editedPrivacy === "public" ? "public" : "lock"
+                }}</i>
+                <span>{{
+                  editedPrivacy === "public" ? "Công khai" : "Chỉ mình tôi"
+                }}</span>
+                <i class="material-icons arrow">arrow_drop_down</i>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Privacy Dropdown -->
-        <div class="privacy-dropdown" v-if="showPrivacyMenu" @click.stop>
-          <div class="privacy-option" :class="{ active: editedPrivacy === 'public' }" @click="selectPrivacy('public')">
-            <i class="material-icons">public</i>
-            <div class="privacy-option-text">
-              <span class="privacy-title">Công khai</span>
-              <span class="privacy-desc">Mọi người đều có thể xem</span>
+          <!-- Privacy Dropdown -->
+          <div class="privacy-dropdown" v-if="showPrivacyMenu" @click.stop>
+            <div
+              class="privacy-option"
+              :class="{ active: editedPrivacy === 'public' }"
+              @click="selectPrivacy('public')"
+            >
+              <i class="material-icons">public</i>
+              <div class="privacy-option-text">
+                <span class="privacy-title">Công khai</span>
+                <span class="privacy-desc">Mọi người đều có thể xem</span>
+              </div>
+              <i class="material-icons check" v-if="editedPrivacy === 'public'"
+                >check_circle</i
+              >
             </div>
-            <i class="material-icons check" v-if="editedPrivacy === 'public'">check_circle</i>
-          </div>
-          <div class="privacy-option" :class="{ active: editedPrivacy === 'private' }" @click="selectPrivacy('private')">
-            <i class="material-icons">lock</i>
-            <div class="privacy-option-text">
-              <span class="privacy-title">Chỉ mình tôi</span>
-              <span class="privacy-desc">Chỉ bạn có thể xem</span>
+            <div
+              class="privacy-option"
+              :class="{ active: editedPrivacy === 'private' }"
+              @click="selectPrivacy('private')"
+            >
+              <i class="material-icons">lock</i>
+              <div class="privacy-option-text">
+                <span class="privacy-title">Chỉ mình tôi</span>
+                <span class="privacy-desc">Chỉ bạn có thể xem</span>
+              </div>
+              <i class="material-icons check" v-if="editedPrivacy === 'private'"
+                >check_circle</i
+              >
             </div>
-            <i class="material-icons check" v-if="editedPrivacy === 'private'">check_circle</i>
->>>>>>> frontend
           </div>
 
           <!-- Post content editor -->
@@ -151,15 +159,10 @@ export default {
       newImageFile: null,
       isSaving: false,
       isUploading: false,
-<<<<<<< HEAD
       errorMessage: "",
       placeholder: "Bạn đang nghĩ gì?",
-=======
-      errorMessage: '',
-      placeholder: 'Bạn đang nghĩ gì?',
-      editedPrivacy: 'public',
+      editedPrivacy: "public",
       showPrivacyMenu: false,
->>>>>>> frontend
     };
   },
   computed: {
@@ -168,19 +171,14 @@ export default {
     },
     hasChanges() {
       if (!this.post) return false;
-<<<<<<< HEAD
       const descriptionChanged =
         this.editedDescription !== (this.post.description || "");
       const imageChanged =
         this.newImageFile !== null ||
         this.editedImageUrl !== (this.post.file || "");
-      return descriptionChanged || imageChanged;
-=======
-      const descriptionChanged = this.editedDescription !== (this.post.description || '');
-      const imageChanged = this.newImageFile !== null || this.editedImageUrl !== (this.post.file || '');
-      const privacyChanged = this.editedPrivacy !== (this.post.privacy || 'public');
+      const privacyChanged =
+        this.editedPrivacy !== (this.post.privacy || "public");
       return descriptionChanged || imageChanged || privacyChanged;
->>>>>>> frontend
     },
     currentImageUrl() {
       if (this.newImageFile) {
@@ -224,13 +222,13 @@ export default {
   methods: {
     resetForm() {
       if (this.post) {
-        this.editedDescription = this.post.description || '';
-        this.editedImageUrl = this.post.file || '';
-        this.editedPrivacy = this.post.privacy || 'public';
+        this.editedDescription = this.post.description || "";
+        this.editedImageUrl = this.post.file || "";
+        this.editedPrivacy = this.post.privacy || "public";
       } else {
-        this.editedDescription = '';
-        this.editedImageUrl = '';
-        this.editedPrivacy = 'public';
+        this.editedDescription = "";
+        this.editedImageUrl = "";
+        this.editedPrivacy = "public";
       }
       this.newImageFile = null;
       this.errorMessage = "";
@@ -304,7 +302,7 @@ export default {
           ...this.post,
           description: this.editedDescription,
           file: imageFileName,
-          privacy: this.editedPrivacy
+          privacy: this.editedPrivacy,
         };
 
         this.$emit("save", updatedPost);
@@ -344,7 +342,7 @@ export default {
     selectPrivacy(privacy) {
       this.editedPrivacy = privacy;
       this.showPrivacyMenu = false;
-    }
+    },
   },
   beforeUnmount() {
     // Ensure body scroll is restored when component is destroyed
