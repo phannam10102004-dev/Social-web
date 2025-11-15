@@ -12,6 +12,14 @@ const GOOGLE_CLIENT_ID =
   "749220537519-beauagaft0dmdc9uf2ije8fo0mrdc9jd.apps.googleusercontent.com";
 
 const buildAssetUrl = (path = "") => {
+  // Nếu path đã là full URL (Cloudinary hoặc external URL), return luôn
+  if (path && (path.startsWith("http://") || path.startsWith("https://"))) {
+    return path;
+  }
+
+  // Nếu là local path, build URL như cũ (cho backward compatibility)
+  if (!path) return "";
+
   const base = UPLOAD_BASE_URL.replace(/\/$/, "");
   const normalized = path.replace(/^\//, "");
   return `${base}/${normalized}`;

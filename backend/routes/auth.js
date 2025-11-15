@@ -6,7 +6,7 @@ const nodemailer = require("nodemailer");
 const xoauth2 = require("xoauth2");
 const sanitize = require("mongo-sanitize");
 const mongoose = require("mongoose");
-const passport = require('../config/passport');
+const passport = require("../config/passport");
 require("dotenv").config();
 
 const transporter = nodemailer.createTransport({
@@ -84,17 +84,31 @@ router.post("/register", async (req, res) => {
   }
 });
 
-//UPLOAD
-router.post("/upload", (req, res) => {
-  const file = req.files.file;
-  file.mv("uploads/user/" + file.name, function (err) {
-    if (err) {
-      console.log(err);
-    } else {
-      console.log("uploaded");
+//UPLOAD AVATAR
+const { uploadToCloudinary } = require("../utils/uploadHelper");
+
+router.post("/upload", async (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ error: "No file uploaded" });
     }
-  });
-  return res.json({ file: req.body.file });
+
+    const file = req.files.file;
+
+    // Upload to Cloudinary
+    const result = await uploadToCloudinary(file, "user");
+
+    // Return Cloudinary URL
+    return res.json({
+      file: result.secure_url, // Use secure_url for HTTPS
+      publicId: result.public_id, // Store for deletion later
+    });
+  } catch (err) {
+    console.error("Upload avatar error:", err);
+    return res
+      .status(500)
+      .json({ error: "Upload failed", details: err.message });
+  }
 });
 
 let refreshTokens = [];
@@ -160,8 +174,8 @@ router.post("/login", async (req, res) => {
 
 router.get("/user", async (req, res) => {
   let token = req.headers.token;
-  
-  console.log('GET /user - Token received:', token ? 'Yes' : 'No');
+
+  console.log("GET /user - Token received:", token ? "Yes" : "No");
 
   if (!token) {
     return res.status(401).json({
@@ -171,18 +185,18 @@ router.get("/user", async (req, res) => {
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
     if (err) {
-      console.error('JWT verification error:', err.message);
+      console.error("JWT verification error:", err.message);
       return res.status(401).json({
         message: "unauthorized",
-        error: err.message
+        error: err.message,
       });
     }
 
-    console.log('Token verified, userId:', decoded.userId);
+    console.log("Token verified, userId:", decoded.userId);
 
     await User.findOne({ _id: decoded.userId }, (err, user) => {
       if (err) {
-        console.error('Find user error:', err);
+        console.error("Find user error:", err);
         return res.status(500).json({ message: "Database error" });
       }
       return res.status(200).json({
@@ -245,7 +259,7 @@ router.put("/update-activity", async (req, res) => {
 
     await User.findByIdAndUpdate(userId, {
       lastSeen: new Date(),
-      isOnline: true
+      isOnline: true,
     });
 
     res.status(200).json({ message: "Activity updated" });
@@ -261,10 +275,10 @@ setInterval(async () => {
     await User.updateMany(
       {
         isOnline: true,
-        lastSeen: { $lt: fiveMinutesAgo }
+        lastSeen: { $lt: fiveMinutesAgo },
       },
       {
-        isOnline: false
+        isOnline: false,
       }
     );
   } catch (error) {
@@ -274,97 +288,102 @@ setInterval(async () => {
 
 // Google OAuth Routes
 // GET - Bắt đầu Google OAuth flow
-router.get('/google', (req, res, next) => {
-  passport.authenticate('google', {
-    scope: ['profile', 'email']
+router.get("/google", (req, res, next) => {
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
   })(req, res, next);
 });
 
 // GET - Google OAuth callback
-router.get('/google/callback', 
+router.get(
+  "/google/callback",
   (req, res, next) => {
     next();
   },
-  passport.authenticate('google', { 
-    failureRedirect: 'http://localhost:8080/#/login?error=google_auth_failed' 
+  passport.authenticate("google", {
+    failureRedirect: "http://localhost:8080/#/login?error=google_auth_failed",
   }),
   async (req, res) => {
     try {
-      console.log('Google callback successful, user:', req.user?.email);
-      
+      console.log("Google callback successful, user:", req.user?.email);
+
       if (!req.user) {
-        console.error('No user found in request after authentication');
-        return res.redirect('http://localhost:8080/#/login?error=no_user');
+        console.error("No user found in request after authentication");
+        return res.redirect("http://localhost:8080/#/login?error=no_user");
       }
-      
+
       // Tạo JWT token cho user
       const token = jwt.sign(
         { userId: req.user._id },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: '7d' }
+        { expiresIn: "7d" }
       );
-      
-      
+
       // Redirect về frontend với token - sử dụng hash route
-      res.redirect(`http://localhost:8080/#/login?token=${token}&success=google_login`);
+      res.redirect(
+        `http://localhost:8080/#/login?token=${token}&success=google_login`
+      );
     } catch (error) {
-      res.redirect('http://localhost:8080/#/login?error=google_auth_failed');
+      res.redirect("http://localhost:8080/#/login?error=google_auth_failed");
     }
   }
 );
 
 // POST - Google Login từ frontend (alternative method)
-router.post('/google/login', async (req, res) => {
+router.post("/google/login", async (req, res) => {
   try {
     const { credential, access_token } = req.body;
-    
+
     let userInfo;
-    
+
     if (credential) {
       // Xử lý ID token
-      const { OAuth2Client } = require('google-auth-library');
+      const { OAuth2Client } = require("google-auth-library");
       const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-      
+
       const ticket = await client.verifyIdToken({
         idToken: credential,
-        audience: process.env.GOOGLE_CLIENT_ID
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
-      
+
       const payload = ticket.getPayload();
       userInfo = {
         googleId: payload.sub,
         email: payload.email,
         name: payload.name,
-        picture: payload.picture
+        picture: payload.picture,
       };
     } else if (access_token) {
       // Xử lý access token
-      const axios = require('axios');
-      const response = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: {
-          Authorization: `Bearer ${access_token}`
+      const axios = require("axios");
+      const response = await axios.get(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
         }
-      });
-      
+      );
+
       userInfo = {
         googleId: response.data.id,
         email: response.data.email,
         name: response.data.name,
-        picture: response.data.picture
+        picture: response.data.picture,
       };
     } else {
-      return res.status(400).json({ error: 'Missing Google token' });
+      return res.status(400).json({ error: "Missing Google token" });
     }
-    
+
     const { googleId, email, name, picture } = userInfo;
-    
+
     // Tìm hoặc tạo user
     let user = await User.findOne({ googleId });
-    
+
     if (!user) {
       // Kiểm tra user với email đã tồn tại chưa
       user = await User.findOne({ email });
-      
+
       if (user) {
         // Link Google account
         user.googleId = googleId;
@@ -379,35 +398,34 @@ router.post('/google/login', async (req, res) => {
           displayName: name,
           profilePicture: picture,
           confirmed: true,
-          password: 'GOOGLE_AUTH'
+          password: "GOOGLE_AUTH",
         });
       }
     }
-    
+
     // Cập nhật activity
     user.lastSeen = new Date();
     user.isOnline = true;
     await user.save();
-    
+
     // Tạo JWT token
     const token = jwt.sign(
       { userId: user._id },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: "7d" }
     );
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       token,
       user: {
         id: user._id,
         email: user.email,
         displayName: user.displayName,
-        profilePicture: user.profilePicture
-      }
+        profilePicture: user.profilePicture,
+      },
     });
-    
   } catch (error) {
-    res.status(500).json({ error: 'Google authentication failed' });
+    res.status(500).json({ error: "Google authentication failed" });
   }
 });
 

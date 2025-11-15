@@ -14,7 +14,7 @@ router.post("/", async (req, res) => {
   const sanitizedisImage = sanitize(req.sanitize(req.body.isImagePost));
   const sanitizedUserId = sanitize(req.sanitize(req.body.userId));
   const sanitizedFile = sanitize(req.sanitize(req.body.file));
-  const sanitizedPrivacy = sanitize(req.sanitize(req.body.privacy)) || 'public';
+  const sanitizedPrivacy = sanitize(req.sanitize(req.body.privacy)) || "public";
 
   const newPost = await new Post({
     description: sanitizedDesc,
@@ -33,17 +33,31 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Upload ảnh cho bài viết vào thư mục uploads/
-router.post("/upload", (req, res) => {
-  const file = req.files.file;
-  file.mv("uploads/" + file.name, function (err) {
-    if (err) {
-      console.log(err);
-    } else {
-      console.log("uploaded");
+// Upload ảnh cho bài viết lên Cloudinary
+const { uploadToCloudinary } = require("../utils/uploadHelper");
+
+router.post("/upload", async (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ error: "No file uploaded" });
     }
-  });
-  return res.json({ file: req.body.file });
+
+    const file = req.files.file;
+
+    // Upload to Cloudinary
+    const result = await uploadToCloudinary(file, "posts");
+
+    // Return Cloudinary URL
+    return res.json({
+      file: result.secure_url,
+      publicId: result.public_id,
+    });
+  } catch (err) {
+    console.error("Upload post image error:", err);
+    return res
+      .status(500)
+      .json({ error: "Upload failed", details: err.message });
+  }
 });
 
 //COMMENT POST
@@ -73,10 +87,10 @@ router.put("/:id/comment", async (req, res) => {
     if (sanitizedUserId !== post.userId) {
       await createNotification(
         sanitizedUserId, // người comment
-        post.userId,     // chủ bài viết
-        'comment',       // loại thông báo
+        post.userId, // chủ bài viết
+        "comment", // loại thông báo
         sanitizedPostId, // ID bài viết
-        addComment._id   // ID comment để scroll đến
+        addComment._id // ID comment để scroll đến
       );
     }
 
@@ -113,7 +127,9 @@ router.put("/:postId/comment/:commentId", async (req, res) => {
 
     // Kiểm tra quyền sở hữu - chỉ người comment mới được sửa
     if (comment.userId !== sanitizedUserId) {
-      return res.status(403).json({ error: "Bạn không có quyền sửa bình luận này" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền sửa bình luận này" });
     }
 
     // Cập nhật comment
@@ -124,7 +140,9 @@ router.put("/:postId/comment/:commentId", async (req, res) => {
     // Cập nhật trong mảng comments của post
     const post = await Post.findById(sanitizedPostId);
     if (post) {
-      const commentIndex = post.comments.findIndex(c => c._id && c._id.toString() === sanitizedCommentId);
+      const commentIndex = post.comments.findIndex(
+        (c) => c._id && c._id.toString() === sanitizedCommentId
+      );
       if (commentIndex !== -1) {
         post.comments[commentIndex].comment = sanitizedComment;
         await post.save();
@@ -133,7 +151,7 @@ router.put("/:postId/comment/:commentId", async (req, res) => {
 
     return res.status(200).json({
       message: "Đã cập nhật bình luận thành công",
-      comment: comment
+      comment: comment,
     });
   } catch (err) {
     console.error("Edit comment error:", err);
@@ -156,7 +174,9 @@ router.delete("/:postId/comment/:commentId", async (req, res) => {
 
     // Kiểm tra quyền sở hữu - chỉ người comment mới được xóa
     if (comment.userId !== sanitizedUserId) {
-      return res.status(403).json({ error: "Bạn không có quyền xóa bình luận này" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền xóa bình luận này" });
     }
 
     // Xóa comment khỏi collection Comment
@@ -165,7 +185,9 @@ router.delete("/:postId/comment/:commentId", async (req, res) => {
     // Xóa comment khỏi mảng comments của post
     const post = await Post.findById(sanitizedPostId);
     if (post) {
-      post.comments = post.comments.filter(c => c._id && c._id.toString() !== sanitizedCommentId);
+      post.comments = post.comments.filter(
+        (c) => c._id && c._id.toString() !== sanitizedCommentId
+      );
       await post.save();
     }
 
@@ -174,7 +196,7 @@ router.delete("/:postId/comment/:commentId", async (req, res) => {
 
     return res.status(200).json({
       message: "Đã xóa bình luận thành công",
-      commentId: sanitizedCommentId
+      commentId: sanitizedCommentId,
     });
   } catch (err) {
     console.error("Delete comment error:", err);
@@ -186,47 +208,49 @@ router.delete("/:postId/comment/:commentId", async (req, res) => {
 router.get("/:id/commenters", async (req, res) => {
   try {
     const sanitizedPostId = sanitize(req.sanitize(req.params.id));
-    
-    console.log('🔍 Getting commenters for post:', sanitizedPostId);
-    
+
+    console.log("🔍 Getting commenters for post:", sanitizedPostId);
+
     // Get all comments for this post
-    const comments = await Comment.find({ postId: sanitizedPostId })
-      .sort({ createdAt: -1 });
-    
-    console.log('📝 Found comments:', comments.length);
-    
+    const comments = await Comment.find({ postId: sanitizedPostId }).sort({
+      createdAt: -1,
+    });
+
+    console.log("📝 Found comments:", comments.length);
+
     // Get unique user IDs
-    const uniqueUserIds = [...new Set(comments.map(c => c.userId))];
-    console.log('👥 Unique user IDs:', uniqueUserIds);
-    
+    const uniqueUserIds = [...new Set(comments.map((c) => c.userId))];
+    console.log("👥 Unique user IDs:", uniqueUserIds);
+
     // Fetch user details for each unique userId
-    const User = require('../models/User');
-    const users = await User.find({ _id: { $in: uniqueUserIds } })
-      .select('displayName email profilePicture');
-    
-    console.log('✅ Users found:', users);
-    
+    const User = require("../models/User");
+    const users = await User.find({ _id: { $in: uniqueUserIds } }).select(
+      "displayName email profilePicture"
+    );
+
+    console.log("✅ Users found:", users);
+
     // Map users to commenter format
-    const commenters = users.map(user => ({
+    const commenters = users.map((user) => ({
       _id: user._id,
       username: user.displayName || user.email,
       displayName: user.displayName,
-      profilePicture: user.profilePicture
+      profilePicture: user.profilePicture,
     }));
-    
-    console.log('📤 Sending response:', {
+
+    console.log("📤 Sending response:", {
       commenters,
       count: commenters.length,
-      totalComments: comments.length
+      totalComments: comments.length,
     });
-    
+
     return res.status(200).json({
       commenters,
       count: commenters.length,
-      totalComments: comments.length
+      totalComments: comments.length,
     });
   } catch (err) {
-    console.error('❌ Get commenters error:', err);
+    console.error("❌ Get commenters error:", err);
     return res.status(500).json(err);
   }
 });
@@ -249,94 +273,97 @@ router.get("/timeline/:userId", async (req, res) => {
     const skip = (page - 1) * limit;
 
     const currentUser = await User.findById(req.params.userId);
-    
+
     // Lấy tất cả userId cần query (bản thân + followings)
     const userIds = [currentUser._id, ...currentUser.followings];
-    
+
     // Query posts với pagination - lọc private posts (chỉ hiển thị public hoặc private của chính mình)
-    const posts = await Post.find({ 
+    const posts = await Post.find({
       userId: { $in: userIds },
       $or: [
-        { privacy: 'public' },
+        { privacy: "public" },
         { privacy: { $exists: false } }, // Bài cũ không có field privacy - coi như public
-        { privacy: 'private', userId: req.params.userId }
-      ]
+        { privacy: "private", userId: req.params.userId },
+      ],
     })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-    
+
     // Initialize reactionsCount for old posts if not exists
-    const enrichedPosts = posts.map(post => {
+    const enrichedPosts = posts.map((post) => {
       const postObj = post.toObject();
-      
+
       // Convert reactions Map to Object
       if (postObj.reactions instanceof Map) {
         postObj.reactions = Object.fromEntries(postObj.reactions);
       } else if (!postObj.reactions) {
         postObj.reactions = {};
       }
-      
+
       // Convert reactionsCount Map to Object and recalculate if needed
       if (postObj.reactionsCount instanceof Map) {
         postObj.reactionsCount = Object.fromEntries(postObj.reactionsCount);
       } else if (!postObj.reactionsCount) {
         postObj.reactionsCount = {};
       }
-      
+
       // Recalculate reactionsCount from reactions if it's empty or invalid
-      if (Object.keys(postObj.reactionsCount).length === 0 && Object.keys(postObj.reactions).length > 0) {
+      if (
+        Object.keys(postObj.reactionsCount).length === 0 &&
+        Object.keys(postObj.reactions).length > 0
+      ) {
         const tempCount = {};
-        
-        Object.values(postObj.reactions).forEach(reactionType => {
+
+        Object.values(postObj.reactions).forEach((reactionType) => {
           if (!tempCount[reactionType]) {
             tempCount[reactionType] = 0;
           }
           tempCount[reactionType]++;
         });
-        
+
         postObj.reactionsCount = tempCount;
-        
+
         console.log(`📊 Post ${postObj._id} recalculated:`, {
           reactions: postObj.reactions,
-          reactionsCount: postObj.reactionsCount
+          reactionsCount: postObj.reactionsCount,
         });
       }
-      
+
       return postObj;
     });
-    
+
     // Đếm tổng số posts để tính hasMore - chỉ đếm public và private của mình
-    const totalPosts = await Post.countDocuments({ 
+    const totalPosts = await Post.countDocuments({
       userId: { $in: userIds },
       $or: [
-        { privacy: 'public' },
+        { privacy: "public" },
         { privacy: { $exists: false } }, // Bài cũ không có field privacy
-        { privacy: 'private', userId: req.params.userId }
-      ]
+        { privacy: "private", userId: req.params.userId },
+      ],
     });
     const hasMore = skip + posts.length < totalPosts;
-    
+
     // Debug log
-    console.log('Timeline API:', {
+    console.log("Timeline API:", {
       page,
       limit,
       skip,
       postsReturned: posts.length,
       totalPosts,
       hasMore,
-      calculation: `${skip} + ${posts.length} < ${totalPosts} = ${hasMore}`
+      calculation: `${skip} + ${posts.length} < ${totalPosts} = ${hasMore}`,
     });
-    
+
     return res.json({
       posts: enrichedPosts,
       hasMore,
       currentPage: page,
       totalPages: Math.ceil(totalPosts / limit),
-      totalPosts
+      totalPosts,
     });
   } catch (err) {
-    console.error('Timeline API Error:', err);
+    console.error("Timeline API Error:", err);
     return res.status(500).json(err);
   }
 });
@@ -353,8 +380,8 @@ router.get("/:userId/posts", async (req, res) => {
     const query = { userId: req.params.userId };
     if (requestingUserId !== req.params.userId) {
       query.$or = [
-        { privacy: 'public' },
-        { privacy: { $exists: false } } // Bài cũ không có field privacy - coi như public
+        { privacy: "public" },
+        { privacy: { $exists: false } }, // Bài cũ không có field privacy - coi như public
       ];
     }
 
@@ -362,28 +389,28 @@ router.get("/:userId/posts", async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-    
+
     // Initialize reactionsCount for old posts if not exists
-    const enrichedPosts = posts.map(post => {
+    const enrichedPosts = posts.map((post) => {
       const postObj = post.toObject();
-      
+
       // Convert reactions Map to Object
       if (postObj.reactions instanceof Map) {
         postObj.reactions = Object.fromEntries(postObj.reactions);
       } else if (!postObj.reactions) {
         postObj.reactions = {};
       }
-      
+
       // Convert reactionsCount Map to Object
       if (postObj.reactionsCount instanceof Map) {
         postObj.reactionsCount = Object.fromEntries(postObj.reactionsCount);
       } else if (!postObj.reactionsCount) {
         postObj.reactionsCount = {};
       }
-      
+
       return postObj;
     });
-    
+
     const totalPosts = await Post.countDocuments(query);
     const hasMore = skip + posts.length < totalPosts;
 
@@ -392,7 +419,7 @@ router.get("/:userId/posts", async (req, res) => {
       hasMore,
       currentPage: page,
       totalPages: Math.ceil(totalPosts / limit),
-      totalPosts
+      totalPosts,
     });
   } catch (err) {
     return res.status(500).json(err);
@@ -414,7 +441,7 @@ router.put("/:id/react", async (req, res) => {
     }
 
     // Validate reaction type
-    const validReactions = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
+    const validReactions = ["like", "love", "haha", "wow", "sad", "angry"];
     if (!validReactions.includes(sanitizedReactionType)) {
       return res.status(400).json({ error: "Loại cảm xúc không hợp lệ" });
     }
@@ -432,31 +459,31 @@ router.put("/:id/react", async (req, res) => {
     if (currentReaction === sanitizedReactionType) {
       // Nếu click vào reaction đang có -> bỏ reaction
       post.reactions.delete(sanitizedUserId);
-      
+
       // Giảm count và xóa key nếu = 0
       const currentCount = post.reactionsCount.get(sanitizedReactionType) || 0;
       const newCount = Math.max(0, currentCount - 1);
-      
+
       if (newCount === 0) {
         post.reactionsCount.delete(sanitizedReactionType);
       } else {
         post.reactionsCount.set(sanitizedReactionType, newCount);
       }
-      
+
       // Cập nhật likes cũ để tương thích
       post.likes = Array.from(post.reactions.keys());
       post.likesCount = post.likes.length;
-      
+
       await post.save();
 
       // KHÔNG xóa notification khi bỏ reaction
       // Giữ lại notification để khi react lại sẽ update thay vì tạo mới
       // Điều này tránh spam notification
 
-      console.log('✅ Reaction removed:', {
+      console.log("✅ Reaction removed:", {
         postId: sanitizedPostId,
         reactionsCount: Object.fromEntries(post.reactionsCount),
-        reactions: Object.fromEntries(post.reactions)
+        reactions: Object.fromEntries(post.reactions),
       });
 
       return res.status(200).json({
@@ -471,7 +498,7 @@ router.put("/:id/react", async (req, res) => {
       if (currentReaction) {
         const oldCount = post.reactionsCount.get(currentReaction) || 0;
         const newOldCount = Math.max(0, oldCount - 1);
-        
+
         if (newOldCount === 0) {
           post.reactionsCount.delete(currentReaction);
         } else {
@@ -481,14 +508,15 @@ router.put("/:id/react", async (req, res) => {
 
       // Thêm/đổi reaction mới
       post.reactions.set(sanitizedUserId, sanitizedReactionType);
-      
+
       // Tăng count của reaction mới
-      const newCount = (post.reactionsCount.get(sanitizedReactionType) || 0) + 1;
+      const newCount =
+        (post.reactionsCount.get(sanitizedReactionType) || 0) + 1;
       post.reactionsCount.set(sanitizedReactionType, newCount);
-      
+
       post.likes = Array.from(post.reactions.keys());
       post.likesCount = post.likes.length;
-      
+
       await post.save();
 
       // Tạo/cập nhật thông báo với reactionType (emoji)
@@ -499,19 +527,19 @@ router.put("/:id/react", async (req, res) => {
         await createNotification(
           sanitizedUserId,
           post.userId,
-          'like',
+          "like",
           sanitizedPostId,
           null,
-          '',
+          "",
           sanitizedReactionType // Truyền reactionType để lưu emoji
         );
       }
 
-      console.log('✅ Reaction added/changed:', {
+      console.log("✅ Reaction added/changed:", {
         postId: sanitizedPostId,
         userReaction: sanitizedReactionType,
         reactionsCount: Object.fromEntries(post.reactionsCount),
-        reactions: Object.fromEntries(post.reactions)
+        reactions: Object.fromEntries(post.reactions),
       });
 
       return res.status(200).json({
@@ -540,12 +568,15 @@ router.get("/:id/reaction-status/:userId", async (req, res) => {
       return res.status(404).json({ error: "Bài viết không tồn tại" });
     }
 
-    const userReaction = post.reactions ? post.reactions.get(sanitizedUserId) : null;
-    
+    const userReaction = post.reactions
+      ? post.reactions.get(sanitizedUserId)
+      : null;
+
     // Convert Map to Object, chỉ có những reactions có count > 0
-    const reactionsCount = post.reactionsCount instanceof Map 
-      ? Object.fromEntries(post.reactionsCount)
-      : {};
+    const reactionsCount =
+      post.reactionsCount instanceof Map
+        ? Object.fromEntries(post.reactionsCount)
+        : {};
 
     return res.status(200).json({
       userReaction,
@@ -565,7 +596,10 @@ router.get("/:id/reactors/:reactionType?", async (req, res) => {
     const sanitizedPostId = sanitize(req.sanitize(req.params.id));
     const reactionType = req.params.reactionType; // optional: like, love, haha, wow, sad, angry
 
-    console.log('🔍 Get reactors request:', { postId: sanitizedPostId, reactionType });
+    console.log("🔍 Get reactors request:", {
+      postId: sanitizedPostId,
+      reactionType,
+    });
 
     const post = await Post.findById(sanitizedPostId);
 
@@ -574,9 +608,10 @@ router.get("/:id/reactors/:reactionType?", async (req, res) => {
     }
 
     const reactions = post.reactions || new Map();
-    const reactionsObj = reactions instanceof Map ? Object.fromEntries(reactions) : reactions;
+    const reactionsObj =
+      reactions instanceof Map ? Object.fromEntries(reactions) : reactions;
 
-    console.log('📊 Post reactions:', reactionsObj);
+    console.log("📊 Post reactions:", reactionsObj);
 
     // Nếu có reactionType, lọc theo type đó
     let filteredUserIds = [];
@@ -588,30 +623,30 @@ router.get("/:id/reactors/:reactionType?", async (req, res) => {
     } else {
       // Nếu không có type, lấy tất cả
       filteredUserIds = Object.keys(reactionsObj);
-      console.log('🔎 All reactors:', filteredUserIds);
+      console.log("🔎 All reactors:", filteredUserIds);
     }
 
     // Lấy thông tin user
     const users = await User.find({ _id: { $in: filteredUserIds } })
-      .select('_id displayName profilePicture')
+      .select("_id displayName profilePicture")
       .lean();
 
-    console.log('👥 Users found:', users);
+    console.log("👥 Users found:", users);
 
     // Map với reaction type của từng user
-    const reactors = users.map(user => ({
+    const reactors = users.map((user) => ({
       _id: user._id,
-      username: user.displayName || 'Người dùng',
+      username: user.displayName || "Người dùng",
       profilePicture: user.profilePicture,
-      reactionType: reactionsObj[user._id.toString()]
+      reactionType: reactionsObj[user._id.toString()],
     }));
 
-    console.log('✅ Final reactors:', reactors);
+    console.log("✅ Final reactors:", reactors);
 
     return res.status(200).json({
       reactors,
       count: reactors.length,
-      reactionType: reactionType || 'all'
+      reactionType: reactionType || "all",
     });
   } catch (err) {
     console.error("Get reactors error:", err);
@@ -644,8 +679,8 @@ router.put("/:id/like", async (req, res) => {
         await Notification.findOneAndDelete({
           fromUser: sanitizedUserId,
           toUser: post.userId,
-          type: 'like',
-          postId: sanitizedPostId
+          type: "like",
+          postId: sanitizedPostId,
         });
       }
 
@@ -664,9 +699,9 @@ router.put("/:id/like", async (req, res) => {
       if (sanitizedUserId !== post.userId) {
         await createNotification(
           sanitizedUserId, // người like
-          post.userId,     // chủ bài viết
-          'like',          // loại thông báo
-          sanitizedPostId  // ID bài viết
+          post.userId, // chủ bài viết
+          "like", // loại thông báo
+          sanitizedPostId // ID bài viết
         );
       }
 
@@ -714,9 +749,9 @@ router.get("/:id/likes", async (req, res) => {
 router.get("/:id/likes-count", async (req, res) => {
   try {
     const sanitizedPostId = sanitize(req.sanitize(req.params.id));
-    
+
     const post = await Post.findById(sanitizedPostId);
-    
+
     if (!post) {
       return res.status(404).json({ error: "Bài viết không tồn tại" });
     }
@@ -736,9 +771,9 @@ router.get("/:id/like-status/:userId", async (req, res) => {
   try {
     const sanitizedPostId = sanitize(req.sanitize(req.params.id));
     const sanitizedUserId = sanitize(req.sanitize(req.params.userId));
-    
+
     const post = await Post.findById(sanitizedPostId);
-    
+
     if (!post) {
       return res.status(404).json({ error: "Bài viết không tồn tại" });
     }
@@ -753,7 +788,9 @@ router.get("/:id/like-status/:userId", async (req, res) => {
     });
   } catch (err) {
     console.error("Check like status error:", err);
-    return res.status(500).json({ error: "Lỗi server khi kiểm tra trạng thái like" });
+    return res
+      .status(500)
+      .json({ error: "Lỗi server khi kiểm tra trạng thái like" });
   }
 });
 
@@ -774,7 +811,9 @@ router.put("/:id", async (req, res) => {
 
     // Kiểm tra quyền sở hữu - chỉ chủ bài viết mới được sửa
     if (post.userId !== sanitizedUserId) {
-      return res.status(403).json({ error: "Bạn không có quyền sửa bài viết này" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền sửa bài viết này" });
     }
 
     // Cập nhật thông tin bài viết
@@ -798,7 +837,7 @@ router.put("/:id", async (req, res) => {
 
     return res.status(200).json({
       message: "Đã cập nhật bài viết thành công",
-      post: updatedPost
+      post: updatedPost,
     });
   } catch (err) {
     console.error("Edit post error:", err);
@@ -820,7 +859,9 @@ router.delete("/:id", async (req, res) => {
 
     // Kiểm tra quyền sở hữu - chỉ chủ bài viết mới được xóa
     if (post.userId !== sanitizedUserId) {
-      return res.status(403).json({ error: "Bạn không có quyền xóa bài viết này" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền xóa bài viết này" });
     }
 
     // Xóa tất cả comments liên quan đến bài viết này
@@ -834,7 +875,7 @@ router.delete("/:id", async (req, res) => {
 
     return res.status(200).json({
       message: "Đã xóa bài viết thành công",
-      postId: sanitizedPostId
+      postId: sanitizedPostId,
     });
   } catch (err) {
     console.error("Delete post error:", err);
