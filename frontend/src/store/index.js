@@ -29,6 +29,7 @@ export default createStore({
     unreadCount: 0,
     messageLoading: false,
     call: createDefaultCallState(),
+    incomingCall: null, // Lưu incoming call global để ChatPopup có thể check
     // Notification related state
     notifications: {
       list: [],
@@ -680,6 +681,12 @@ export default createStore({
 
     SET_CALL_ERROR(state, error) {
       state.call.error = error;
+    },
+    SET_INCOMING_CALL(state, incomingCall) {
+      state.incomingCall = incomingCall;
+    },
+    CLEAR_INCOMING_CALL(state) {
+      state.incomingCall = null;
     },
   },
 });

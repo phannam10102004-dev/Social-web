@@ -334,6 +334,55 @@ export default {
         console.log("📬 [TheHeader] Conversation updated, reloading");
         this.$store.dispatch("loadConversations");
       });
+
+      // Listen for incoming video calls globally
+      socketService.onIncomingCall(async (data) => {
+        console.log("📞 [TheHeader] Incoming call received:", data);
+
+        // Lưu incoming call vào store để ChatPopup có thể check
+        this.$store.commit("SET_INCOMING_CALL", data);
+
+        // Tự động mở ChatPopup với conversation tương ứng
+        if (data.conversationId && this.$refs.chatPopupsManager) {
+          try {
+            // Tìm conversation trong store
+            const conversations = this.$store.getters.sortedConversations || [];
+            let conversation = conversations.find(
+              (c) => c._id === data.conversationId
+            );
+
+            // Nếu không tìm thấy, fetch từ API
+            if (!conversation) {
+              const MessageAPI = (await import("@/api/messages")).default;
+              const response = await MessageAPI.getConversations();
+              if (response.status === 200) {
+                conversation = response.data.find(
+                  (c) => c._id === data.conversationId
+                );
+              }
+            }
+
+            // Nếu tìm thấy conversation, mở ChatPopup
+            if (conversation) {
+              console.log(
+                "✅ [TheHeader] Opening chat popup for incoming call"
+              );
+              this.$refs.chatPopupsManager.openChat(conversation);
+              // ChatPopup sẽ check store khi mount để xử lý incoming call
+            } else {
+              console.warn(
+                "⚠️ [TheHeader] Conversation not found for incoming call:",
+                data.conversationId
+              );
+            }
+          } catch (error) {
+            console.error(
+              "❌ [TheHeader] Error opening chat for incoming call:",
+              error
+            );
+          }
+        }
+      });
     },
 
     async handleNewMessageForUnreadCount(data) {

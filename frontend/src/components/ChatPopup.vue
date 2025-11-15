@@ -1631,11 +1631,53 @@ export default {
         });
       }
     },
+    isCallModalVisible(newVal) {
+      // Khi modal hiển thị, đảm bảo video streams được set
+      if (newVal) {
+        this.$nextTick(() => {
+          // Set local video nếu có stream
+          if (this.$refs.localVideo && this.localStream) {
+            this.$refs.localVideo.srcObject = this.localStream;
+            console.log("[VideoCall] Local video set via watcher");
+          }
+          // Set remote video nếu có stream
+          if (this.$refs.remoteVideo && this.remoteStream) {
+            this.$refs.remoteVideo.srcObject = this.remoteStream;
+            console.log("[VideoCall] Remote video set via watcher");
+          }
+        });
+      }
+    },
   },
   mounted() {
     // Đợi một chút để đảm bảo socket đã connect
     this.$nextTick(() => {
       this.setupSocketListeners();
+
+      // Đợi setup listeners xong rồi mới check incoming call từ store
+      // Sử dụng setTimeout để đảm bảo setupSocketListeners đã hoàn tất
+      setTimeout(() => {
+        // Check incoming call từ store (nếu có)
+        const storedIncomingCall = this.$store.state.incomingCall;
+        if (
+          storedIncomingCall &&
+          storedIncomingCall.conversationId === this.conversation._id
+        ) {
+          console.log(
+            "📞 [ChatPopup mounted] Found incoming call in store:",
+            storedIncomingCall
+          );
+          this.incomingCall = {
+            conversationId: storedIncomingCall.conversationId,
+            callerId: storedIncomingCall.callerId,
+            callerName:
+              this.conversation?.participant?.displayName || "Người dùng",
+            callType: storedIncomingCall.callType,
+          };
+          // Clear incoming call từ store
+          this.$store.commit("CLEAR_INCOMING_CALL");
+        }
+      }, 500); // Đợi 500ms để setup listeners xong
 
       // Scroll xuống tin nhắn mới nhất khi mở popup lần đầu - tăng delay lên 1s
       setTimeout(() => {
@@ -1717,7 +1759,11 @@ export default {
 
       // Video call listeners
       socketService.onIncomingCall((data) => {
+        console.log("📞 [ChatPopup] Incoming call event received:", data);
         if (data.conversationId === this.conversation._id) {
+          console.log(
+            "✅ [ChatPopup] Incoming call matched conversation, setting up incoming call"
+          );
           this.incomingCall = {
             conversationId: data.conversationId,
             callerId: data.callerId,
@@ -1725,19 +1771,27 @@ export default {
               this.conversation?.participant?.displayName || "Người dùng",
             callType: data.callType,
           };
+          // Clear incoming call từ store (đã xử lý)
+          if (
+            this.$store.state.incomingCall?.conversationId ===
+            this.conversation._id
+          ) {
+            this.$store.commit("CLEAR_INCOMING_CALL");
+          }
         }
       });
 
       socketService.onCallAccepted((data) => {
-        if (
-          data.conversationId === this.conversation._id &&
-          this.callStatus === "calling"
-        ) {
-          this.callStatus = "active";
-          if (this.callTimeout) {
-            clearTimeout(this.callTimeout);
-            this.callTimeout = null;
+        if (data.conversationId === this.conversation._id) {
+          // Nếu là caller (đang calling), update status
+          if (this.callStatus === "calling") {
+            this.callStatus = "active";
+            if (this.callTimeout) {
+              clearTimeout(this.callTimeout);
+              this.callTimeout = null;
+            }
           }
+          // Nếu là answerer (đã active), không làm gì (đã được xử lý trong acceptIncomingCall)
         }
       });
 
@@ -1749,9 +1803,15 @@ export default {
 
       socketService.onCallCancelled((data) => {
         if (data.conversationId === this.conversation._id) {
-          this.incomingCall = null;
+          // Chỉ cancel nếu đang ở trạng thái calling (chưa accept)
           if (this.callStatus === "calling") {
+            this.incomingCall = null;
             this.handleCallError("Cuộc gọi đã bị hủy");
+          } else if (this.callStatus === "active") {
+            // Nếu đã active rồi thì không làm gì (có thể caller đã cancel nhưng call đã được accept)
+            console.log(
+              "[VideoCall] Call cancelled but already active, ignoring"
+            );
           }
         }
       });
@@ -1763,44 +1823,89 @@ export default {
       });
 
       socketService.onCallOffer((data) => {
+        console.log("[VideoCall] Received offer:", data);
         if (data.conversationId === this.conversation._id) {
+          // Nếu chưa có peer connection, tạo mới (cho answerer)
           if (!this.peerConnection && this.isCallModalVisible) {
-            // Create peer connection if not exists (for answerer)
+            console.log("[VideoCall] Creating peer connection for answer");
             this.createPeerConnectionForAnswer(data.conversationId);
           }
 
-          if (this.peerConnection) {
-            this.peerConnection
-              .setRemoteDescription(new RTCSessionDescription(data.offer))
-              .then(() => {
-                // Process queued ICE candidates
-                this.iceQueue.forEach((candidate) => {
-                  this.peerConnection
-                    .addIceCandidate(new RTCIceCandidate(candidate))
-                    .catch((error) => {
-                      console.error(
-                        "[VideoCall] Error adding queued ICE candidate:",
-                        error
-                      );
-                    });
-                });
-                this.iceQueue = [];
+          // Đợi một chút để đảm bảo peer connection đã được tạo
+          setTimeout(() => {
+            if (this.peerConnection) {
+              console.log(
+                "[VideoCall] Setting remote description and creating answer"
+              );
+              this.peerConnection
+                .setRemoteDescription(new RTCSessionDescription(data.offer))
+                .then(() => {
+                  console.log(
+                    "[VideoCall] Remote description set successfully"
+                  );
+                  // Process queued ICE candidates
+                  this.iceQueue.forEach((candidate) => {
+                    this.peerConnection
+                      .addIceCandidate(new RTCIceCandidate(candidate))
+                      .catch((error) => {
+                        console.error(
+                          "[VideoCall] Error adding queued ICE candidate:",
+                          error
+                        );
+                      });
+                  });
+                  this.iceQueue = [];
 
-                return this.peerConnection.createAnswer();
-              })
-              .then((answer) => {
-                return this.peerConnection.setLocalDescription(answer);
-              })
-              .then(() => {
-                socketService.sendAnswer(
-                  this.conversation._id,
-                  this.peerConnection.localDescription
-                );
-              })
-              .catch((error) => {
-                console.error("[VideoCall] Error handling offer:", error);
-              });
-          }
+                  return this.peerConnection.createAnswer();
+                })
+                .then((answer) => {
+                  console.log(
+                    "[VideoCall] Answer created, setting local description"
+                  );
+                  return this.peerConnection.setLocalDescription(answer);
+                })
+                .then(() => {
+                  console.log("[VideoCall] Sending answer to caller");
+                  socketService.sendAnswer(
+                    this.conversation._id,
+                    this.peerConnection.localDescription
+                  );
+                })
+                .catch((error) => {
+                  console.error("[VideoCall] Error handling offer:", error);
+                  this.handleCallError("Không thể xử lý offer");
+                });
+            } else {
+              console.error(
+                "[VideoCall] Peer connection still not ready after timeout"
+              );
+              // Thử tạo lại peer connection nếu chưa có
+              console.log("[VideoCall] Retrying to create peer connection");
+              this.createPeerConnectionForAnswer(data.conversationId);
+              // Retry xử lý offer sau 200ms
+              setTimeout(() => {
+                if (this.peerConnection && data.offer) {
+                  console.log("[VideoCall] Retrying to handle offer");
+                  this.peerConnection
+                    .setRemoteDescription(new RTCSessionDescription(data.offer))
+                    .then(() => this.peerConnection.createAnswer())
+                    .then((answer) =>
+                      this.peerConnection.setLocalDescription(answer)
+                    )
+                    .then(() => {
+                      socketService.sendAnswer(
+                        this.conversation._id,
+                        this.peerConnection.localDescription
+                      );
+                      console.log("[VideoCall] Answer sent after retry");
+                    })
+                    .catch((error) => {
+                      console.error("[VideoCall] Retry error:", error);
+                    });
+                }
+              }, 200);
+            }
+          }, 100);
         }
       });
 
@@ -2722,9 +2827,19 @@ export default {
           audio: true,
         });
 
-        if (this.$refs.localVideo) {
-          this.$refs.localVideo.srcObject = this.localStream;
-        }
+        console.log("[VideoCall] Local stream obtained:", this.localStream);
+
+        // Đảm bảo video element được set
+        this.$nextTick(() => {
+          if (this.$refs.localVideo && this.localStream) {
+            this.$refs.localVideo.srcObject = this.localStream;
+            console.log("[VideoCall] Local video element updated");
+          } else {
+            console.warn(
+              "[VideoCall] Local video element not found or stream not available"
+            );
+          }
+        });
       } catch (error) {
         console.error("[VideoCall] prepareLocalStream error:", error);
         throw error;
@@ -2757,10 +2872,15 @@ export default {
 
       // Handle remote stream
       this.peerConnection.ontrack = (event) => {
+        console.log("[VideoCall] Received remote track:", event);
         this.remoteStream = event.streams[0];
-        if (this.$refs.remoteVideo) {
-          this.$refs.remoteVideo.srcObject = this.remoteStream;
-        }
+        // Đảm bảo remote video được set
+        this.$nextTick(() => {
+          if (this.$refs.remoteVideo && this.remoteStream) {
+            this.$refs.remoteVideo.srcObject = this.remoteStream;
+            console.log("[VideoCall] Remote video stream set");
+          }
+        });
       };
 
       // Create and send offer
@@ -2782,27 +2902,61 @@ export default {
     },
 
     async acceptIncomingCall() {
-      if (!this.incomingCall) return;
+      if (!this.incomingCall) {
+        console.warn("[VideoCall] No incoming call to accept");
+        return;
+      }
 
       const conversationId = this.incomingCall.conversationId;
+      console.log(
+        "[VideoCall] Accepting incoming call for conversation:",
+        conversationId
+      );
 
       try {
+        // Set status và modal TRƯỚC để UI hiển thị ngay
         this.callStatus = "active";
         this.isCallModalVisible = true;
 
-        // Prepare local stream
-        await this.prepareLocalStream();
-
-        // Create peer connection
-        this.createPeerConnectionForAnswer(conversationId);
-
-        // Accept call via socket
+        // Accept call via socket (để caller biết call được accept)
         socketService.acceptCall(conversationId);
+
+        // Join call room để nhận offer
+        socketService.joinConversation(conversationId);
+
+        // Prepare local stream
+        try {
+          await this.prepareLocalStream();
+          // Đảm bảo local video được set sau khi stream ready
+          this.$nextTick(() => {
+            if (this.$refs.localVideo && this.localStream) {
+              this.$refs.localVideo.srcObject = this.localStream;
+              console.log("[VideoCall] Local video stream set after accept");
+            }
+          });
+        } catch (streamError) {
+          console.error(
+            "[VideoCall] Error preparing local stream:",
+            streamError
+          );
+          // Không cleanup call nếu chỉ lỗi stream, vẫn có thể nhận video từ caller
+          // Chỉ show warning
+          console.warn("[VideoCall] Continuing call without local stream");
+        }
+
+        // Create peer connection (sẽ đợi offer từ caller)
+        this.createPeerConnectionForAnswer(conversationId);
 
         this.incomingCall = null;
       } catch (error) {
         console.error("[VideoCall] acceptIncomingCall error:", error);
-        this.handleCallError("Không thể tham gia cuộc gọi");
+        // Chỉ cleanup nếu lỗi nghiêm trọng, không phải lỗi stream
+        if (
+          error.name !== "NotReadableError" &&
+          error.name !== "NotAllowedError"
+        ) {
+          this.handleCallError("Không thể tham gia cuộc gọi");
+        }
       }
     },
 
@@ -2811,13 +2965,22 @@ export default {
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       };
 
+      console.log(
+        "[VideoCall] Creating peer connection for answer, localStream:",
+        this.localStream ? "exists" : "null"
+      );
       this.peerConnection = new RTCPeerConnection(configuration);
 
-      // Add local stream tracks
+      // Add local stream tracks (nếu có)
       if (this.localStream) {
         this.localStream.getTracks().forEach((track) => {
           this.peerConnection.addTrack(track, this.localStream);
+          console.log("[VideoCall] Added local track:", track.kind);
         });
+      } else {
+        console.log(
+          "[VideoCall] No local stream, will only receive remote stream"
+        );
       }
 
       // Handle ICE candidates
@@ -2829,10 +2992,15 @@ export default {
 
       // Handle remote stream
       this.peerConnection.ontrack = (event) => {
+        console.log("[VideoCall] Received remote track (answerer):", event);
         this.remoteStream = event.streams[0];
-        if (this.$refs.remoteVideo) {
-          this.$refs.remoteVideo.srcObject = this.remoteStream;
-        }
+        // Đảm bảo remote video được set
+        this.$nextTick(() => {
+          if (this.$refs.remoteVideo && this.remoteStream) {
+            this.$refs.remoteVideo.srcObject = this.remoteStream;
+            console.log("[VideoCall] Remote video stream set (answerer)");
+          }
+        });
       };
     },
 
